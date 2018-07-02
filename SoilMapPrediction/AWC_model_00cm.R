@@ -84,7 +84,7 @@ pts.ext <- merge(as.data.frame(shp.pts),ov.lst, by="DID")
 
 ## Save points
 setwd("O:/Models_active_work/UpCo/Avail_H2O_2D_CV")
-write.table(pts.ext, "cop_ncss17_w15l2_covarsc.txt", sep = "\t", row.names = FALSE)
+write.table(pts.ext, "UCRB_ncss17_w15l2_covarsc.txt", sep = "\t", row.names = FALSE)
 #pts$swregap = as.factor(pts$swregap)
 #pts$LFelems  = as.factor(as.character(pts$LFelems))
 #pts$pscsmodalb = as.factor(pts$pscsmodalb)
