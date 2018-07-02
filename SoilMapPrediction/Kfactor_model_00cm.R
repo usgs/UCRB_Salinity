@@ -103,7 +103,7 @@ varImpPlot(soiclass)
 ## Reference covar rasters to use in prediction
 setwd("O:/Models_active_work/UpCo/final_covars")
 #rasters=stack(list.files(getwd(),pattern=".tif$",full.names=FALSE))
-DEPTH =  calc(projgrid, fun=function(x)(ifelse(x>-999,5)), progress="text") #raster to set prediction depth
+DEPTH =  calc(projgrid, fun=function(x)(ifelse(x>-999,0)), progress="text") #raster to set prediction depth
 names(DEPTH)<-"DEPTH"
 rasters=stack(cov.grids, DEPTH)
 #rasters = setMinMax(brick(rasters))
@@ -113,55 +113,14 @@ names(rasters)
 setwd("O:/Models_active_work/UpCo/Kw")
 ## Parallelized predict
 beginCluster(31,type='SOCK')
-predl <- clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.025)),export="Qsoiclass",progress="text")
-predh <- clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.975)),progress="text")
 pred <- clusterR(rasters, predict, args=list(model=soiclass),progress="text")
 endCluster()
-s = stack(predh,predl)
-### Block for non-transformed data
-PIwidth = overlay(s, fun=function(a,b) (a-b),progress = "text")
-varrange = as.numeric(quantile(ptsc$K_sw, probs=c(0.975))-quantile(ptsc$K_sw, probs=c(0.025)))
-PIrelwidth = overlay(s, fun=function(a,b) ((a-b)/varrange), progress = "text")
-### Block to run for transformed data - be sure to adjust calcs for log vs log10 vs sqrt
-predh_bt = calc(predh, fun=function(x) (exp(x)), progress="text")#If a backtransform is needed 10^(x) or exp(x)
-predl_bt = calc(predl, fun=function(x) (exp(x)), progress="text")
-pred_bt = calc(pred, fun=function(x) (exp(x)), progress="text")
-s_bt = stack(predh_bt,predl_bt)
-PIwidth_bt = overlay(s_bt, fun=function(a,b) (a-b),progress = "text")
-varrange_bt = as.numeric(quantile(ptsc$ec_12pre, probs=c(0.975))-quantile(ptsc$ec_12pre, probs=c(0.025)))
-PIrelwidth_bt = overlay(s_bt, fun=function(a,b) ((a-b)/varrange_bt), progress = "text")
+
 ###Block for outputs
 setwd("O:/Models_active_work/UpCo/Kw/outputs")
-#writeRaster(pred_bt, overwrite=TRUE,filename="kw_5cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(pred, overwrite=TRUE,filename="kw_5cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predl, overwrite=TRUE,filename="kw_5cm_QRF_95PI_l.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predh, overwrite=TRUE,filename="kw_5cm_QRF_95PI_h.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predl_bt, overwrite=TRUE,filename="kw_5cm_QRF_95PI_l_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predh_bt, overwrite=TRUE,filename="kw_5cm_QRF_95PI_h_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIrelwidth, overwrite=TRUE,filename="kw_5cm_QRF_95PI_relwidth.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIwidth, overwrite=TRUE,filename="kw_5cm_QRF_95PI_width.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIwidth_bt, overwrite=TRUE,filename="kw_5cm_QRF_95PI_width_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIrelwidth_bt, overwrite=TRUE,filename="kw_5cm_QRF_95PI_relwidth_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-## Create lookup table (for categorical predictions)
-#lookup_tab = as.data.frame(soiclass$classes)
-#write.table(lookup_tab, file = "ESG_MLRA35_lookup_tab.txt", sep = "\t")
+writeRaster(pred, overwrite=TRUE,filename="kw_0cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
 
 
-##################### Run Cross Validation ######################################
-trainx = gsub(".tif","", cov.grids)
-depth = "DEPTH" # to use in 3D soil property mapping
-trainx = c(trainx,depth)
-trainx = ptsc[c(trainx)]
-trainy = ptsc[c("K_sw")]
-set.seed(41)
-## rfcv runs a cross val and tests variable importance
-cv10 = rfcv(trainx, trainy$K_sw, cv.fold = 10, proximity=FALSE, ntree=100, keep.forest=TRUE)
-par(mar=c(5, 4, 4, 2) + 0.1)
-with(cv10, plot(n.var, error.cv, log="x", type="o", lwd=2))
-# Now put the full cross val out of the rfcv
-ptsc$K_sw_cv_pred = cv10$predicted$`41` ## the '#' at end corresponds to the number of variables included should = number of vars used
-RMSE = sqrt(mean((ptsc$K_sw - ptsc$K_sw_cv_pred)^2, na.rm=TRUE))
-R.squared = 1-var(ptsc$K_sw - ptsc$K_sw_cv_pred, na.rm=TRUE)/var(ptsc$K_sw, na.rm=TRUE)
 
 ################### Pedon-based Cross validation ################################
 pts$pedon_key <- paste(pts$long.1,pts$lat.1,sep="")
@@ -190,17 +149,4 @@ pts.extcv5 <- subset(pts.extcv, DEPTH<5)
 cvp5.RMSE = sqrt(mean((pts.extcv5$K_sw - pts.extcv5$pcvpred)^2, na.rm=TRUE))
 cvp5.Rsquared = 1-var(pts.extcv5$K_sw - pts.extcv5$pcvpred, na.rm=TRUE)/var(pts.extcv5$K_sw, na.rm=TRUE)
 
-
-######################## Now look at residuals ###################################
-# Out-of-bag predictions
-ptsc$clayOOB = predict(soiclass)
-ptsc$claycverr = ptsc$claycvpred - ptsc$clay
-ptsc$claycverrabs = abs(ptsc$claycvpred - ptsc$clay)
-formulaStringClayerr = as.formula(paste('claycverr ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverr = randomForest(formulaStringClayerr,data = ptsc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverr
-formulaStringClayerrabs = as.formula(paste('claycverrabs ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverrabs = randomForest(formulaStringClayerrabs,data = ptsc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverrabs
-varImpPlot(rfcverrabs)
 
