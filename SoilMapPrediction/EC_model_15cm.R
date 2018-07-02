@@ -151,34 +151,10 @@ names(rasters)
 setwd("O:/Models_active_work/UpCo/ECmodel_wLIMS_2D/outputs")
 ## Parallelized predict
 beginCluster(31,type='SOCK')
-predl = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.025)),progress="text")
-predh = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.975)),progress="text")
 pred = clusterR(rasters, predict, args=list(model=soiclass),progress="text")
 endCluster()
-#s = stack(predh,predl)
-#PIwidth = overlay(s, fun=function(a,b) (a-b),progress = "text")
-#varrange = as.numeric(quantile(log(ptsc$ec_12pre), probs=c(0.975))-quantile(log(ptsc$ec_12pre), probs=c(0.025)))
-#PIrelwidth = overlay(s, fun=function(a,b) ((a-b)/varrange), progress = "text")
-predh_bt = calc(predh, fun=function(x) (exp(x)), progress="text")#If a backtransform is needed 10^(x) or exp(x)
-predl_bt = calc(predl, fun=function(x) (exp(x)), progress="text")
 pred_bt = calc(pred, fun=function(x) (exp(x)), progress="text")
-s_bt = stack(predh_bt,predl_bt)
-PIwidth_bt = overlay(s_bt, fun=function(a,b) (a-b),progress = "text")
-varrange_bt = as.numeric(quantile(pts.extc$ec_12pre, probs=c(0.975))-quantile(pts.extc$ec_12pre, probs=c(0.025)))
-PIrelwidth_bt = overlay(s_bt, fun=function(a,b) ((a-b)/varrange_bt), progress = "text")
 writeRaster(pred_bt, overwrite=F,filename="EC_2D_15cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(pred, overwrite=F,filename="EC_2D_15cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predl_bt, overwrite=F,filename="EC_2D_15cm_QRF_95PI_l_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predh_bt, overwrite=F,filename="EC_2D_15cm_QRF_95PI_h_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predl, overwrite=F,filename="EC_2D_15cm_QRF_95PI_l.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predh, overwrite=F,filename="EC_2D_15cm_QRF_95PI_h.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIrelwidth, overwrite=F,filename="EC_2D_15cm_QRF_95PI_relwidth.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIwidth, overwrite=F,filename="EC_2D_15cm_QRF_95PI_width.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIwidth_bt, overwrite=F,filename="EC_2D_15cm_QRF_95PI_width_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIrelwidth_bt, overwrite=F,filename="EC_2D_15cm_QRF_95PI_relwidth_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-## Create lookup table (for categorical predictions)
-#lookup_tab = as.data.frame(soiclass$classes)
-#write.table(lookup_tab, file = "ESG_MLRA35_lookup_tab.txt", sep = "/t")
 
 
 ##################### Run Cross Validation ######################################
@@ -197,27 +173,5 @@ pts.extc$cvpred = cv.rf$predicted$`40` ## the '#' at end corresponds to the numb
 cv.RMSE = sqrt(mean((log(pts.extc$ec_12pre) - pts.extc$cvpred)^2, na.rm=TRUE))
 cv.Rsquared = 1-var(log(pts.extc$ec_12pre) - pts.extc$cvpred, na.rm=TRUE)/var(log(pts.extc$ec_12pre), na.rm=TRUE)
 NSE(pts.extc$cvpred,log(pts.extc$ec_12pre))
-
-
-################### Manual Cross validation ################################
-
-ptspred.listcvm <- c(ptspred.list)
-pts.extcvm <- pts.ext[c(ptspred.listcvm)]
-pts.extcvm <- na.omit(pts.extcvm)# Remove any record with NA's (in any column - be careful)
-pts.extcvm  <- subset(pts.extcvm, pts.extcvm$ec_12pre != "NA")
-nfolds <- 10
-pts.extcvm$folds <- sample.int(nfolds,size =length(pts.extcvm$ec_12pre),replace=T)
-formulaStringCVm <- as.formula(paste('log(ec_12pre) ~','depth','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-pts.extcvm$mcvpred <- "NA"
-for (g in seq(nfolds)){
-  traindf <- subset(pts.extcvm, pts.extcvm$folds != g)
-  rf.pcvm <- randomForest(formulaStringCVm, data=traindf, importance=FALSE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-  pts.extcvm$mcvpred <- ifelse(pts.extcvm$folds == g, predict(rf.pcvm, newdata=pts.extcvm),pts.extcvm$mcvpred)
-  print(g)
-}
-pts.extcvm$mcvpred = as.numeric(pts.extcvm$mcvpred)
-cvm.RMSE = sqrt(mean((pts.extcvm$ec_12pre - pts.extcvm$)^2, na.rm=TRUE))
-cvm.Rsquared = 1-var(log(pts.extcvm$ec_12pre) - pts.extcvm$mcvpred, na.rm=TRUE)/var(log(pts.extcvm$ec_12pre), na.rm=TRUE)
-
 
 
