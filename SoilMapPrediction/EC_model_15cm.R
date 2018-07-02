@@ -199,19 +199,6 @@ cv.Rsquared = 1-var(log(pts.extc$ec_12pre) - pts.extc$cvpred, na.rm=TRUE)/var(lo
 NSE(pts.extc$cvpred,log(pts.extc$ec_12pre))
 
 
-cv.RMSE
-cv.Rsquared
-NS
-cvres<-log(pts.extc$ec_12pre)-pts.extc$cvpred
-plot(cvres)
-hist(cvres)
-ggqqplot(cvres)
-rndsmple<-(sample(cvres,99,replace=F))
-shapiro.test(rndsmple)
-
-
-
-
 ################### Manual Cross validation ################################
 
 ptspred.listcvm <- c(ptspred.list)
