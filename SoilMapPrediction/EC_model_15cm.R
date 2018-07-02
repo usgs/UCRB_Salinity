@@ -114,9 +114,6 @@ pts.ext <- merge(as.data.frame(shp.pts),ov.lst, by="DID")
 ## Save points
 setwd("O:/Models_active_work/UpCo/ECmodel_wLIMS_2D")
 write.table(pts.ext, "cop_ncss17_ec12_2D_covarsc.txt", sep = "\t", row.names = FALSE)
-#pts$swregap = as.factor(pts$swregap)
-#pts$LFelems  = as.factor(as.character(pts$LFelems))
-#pts$pscsmodalb = as.factor(pts$pscsmodalb)
 
 ## Prep for Random Forest
 pts.extc <- subset(pts.ext, as.numeric(pts.ext$depth_t) <= 15 & as.numeric(pts.ext$depth_b) > 15) # subset to chosen depth
@@ -236,16 +233,4 @@ cvm.RMSE = sqrt(mean((pts.extcvm$ec_12pre - pts.extcvm$)^2, na.rm=TRUE))
 cvm.Rsquared = 1-var(log(pts.extcvm$ec_12pre) - pts.extcvm$mcvpred, na.rm=TRUE)/var(log(pts.extcvm$ec_12pre), na.rm=TRUE)
 
 
-######################## Now look at residuals ###################################
-# Out-of-bag predictions
-pts.extc$clayOOB = predict(soiclass)
-pts.extc$claycverr = pts.extc$claycvpred - pts.extc$clay
-pts.extc$claycverrabs = abs(pts.extc$claycvpred - pts.extc$clay)
-formulaStringClayerr = as.formula(paste('claycverr ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverr = randomForest(formulaStringClayerr,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverr
-formulaStringClayerrabs = as.formula(paste('claycverrabs ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverrabs = randomForest(formulaStringClayerrabs,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverrabs
-varImpPlot(rfcverrabs)
 
