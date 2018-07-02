@@ -24,12 +24,6 @@ rasterOptions(maxmemory = 1e+9)
 options(scipen = 999)
 par(mar=c(0.3,0.3,0.3,0.3))
 
-######## Load shapefile ##############
-#setwd("C:/Models_active_work/UpCo/ECmodel_wLIMS")## FOlder with points
-#shp.pts <-readOGR(".", "ec_12pre_ncss_LIMS_UPCO")
-#point.proj <- projection(shp.pts)
-## If not prj file and you know proj, can specify by name
-#shp.proj <- CRS("+proj=longlat +datum=WGS84")
 
 ######## Get points for extraction if in table form ###########
 setwd("O:/Models_active_work/UpCo/Rock_Frgmt_2D_CV")
@@ -107,7 +101,7 @@ ytrain <- c(as.matrix(pts.extc[c(pred)]))
 sqrtytrain <- sqrt(ytrain)
 
 ############### Build quantile Random Forest
-Qsoiclass <- quantregForest(x=xtrain, y=sqrtytrain, importance=TRUE, ntree=100, keep.forest=TRUE)
+Qsoiclass <- quantregForest(x=xtrain, y=ytrain, importance=TRUE, ntree=100, keep.forest=TRUE)
 #soiclass = randomForest(ec_12pre ~ ., data = ptsc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
 soiclass = Qsoiclass
 class(soiclass) = "randomForest"
@@ -130,35 +124,9 @@ names(rasters)
 setwd("O:/Models_active_work/UpCo/FS_VFS_pct_2D_CV/Outputs")
 ## Parallelized predict
 beginCluster(31,type='SOCK')
-predl = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.025)),progress="text")
-predh = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.975)),progress="text")
 pred = clusterR(rasters, predict, args=list(model=soiclass),progress="text")
 endCluster()
-#s = stack(predh,predl)
-#PIwidth = overlay(s, fun=function(a,b) (a-b),progress = "text")
-#varrange = as.numeric(quantile(ptsc$db_od, probs=c(0.975),na.rm=T)-quantile(ptsc$db_od, probs=c(0.025),na.rm=T))
-#PIrelwidth = overlay(s, fun=function(a,b) ((a-b)/varrange), progress = "text")
-predh_bt = calc(predh, fun=function(x) (x^2), progress="text")#If a backtransform is needed 10^(x) or exp(x)
-predl_bt = calc(predl, fun=function(x) (x^2), progress="text")
-pred_bt = calc(pred, fun=function(x) (x^2), progress="text")
-s_bt = stack(predh_bt,predl_bt)
-PIwidth_bt = overlay(s_bt, fun=function(a,b) (a-b),progress = "text")
-varrange_bt = as.numeric(quantile(pts.extc$sand_f_vf_psa, probs=c(0.975))-quantile(pts.extc$sand_f_vf_psa, probs=c(0.025)))
-PIrelwidth_bt = overlay(s_bt, fun=function(a,b) ((a-b)/varrange_bt), progress = "text")
-writeRaster(pred_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-#writeRaster(pred, overwrite=F,filename="db_od_00cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predl_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_l_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-writeRaster(predh_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_h_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-#writeRaster(predl, overwrite=F,filename="db_od_00cm_QRF_95PI_l.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predh, overwrite=F,filename="db_od_00cm_QRF_95PI_h.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIrelwidth, overwrite=F,filename="db_od_00cm_QRF_95PI_relwidth.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIwidth, overwrite=F,filename="db_od_00cm_QRF_95PI_width.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIwidth_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_width_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-writeRaster(PIrelwidth_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_relwidth_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-## Create lookup table (for categorical predictions)
-#lookup_tab = as.data.frame(soiclass$classes)
-#write.table(lookup_tab, file = "ESG_MLRA35_lookup_tab.txt", sep = "/t")
-
+writeRaster(pred, overwrite=F,filename="rock_00cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
 
 ##################### Run Cross Validation ######################################
 trainx = gsub(".tif","", cov.grids)
@@ -168,46 +136,12 @@ trainy = pts.extc[c("wpg2")]
 set.seed(41)
 ## rfcv runs a cross val and tests variable importance
 nfolds <- 10
-cv.rf = rfcv(trainx, sqrt(trainy$wpg2), cv.fold = nfolds, proximity=FALSE, ntree=100, keep.forest=TRUE)
+cv.rf = rfcv(trainx, trainy$wpg2, cv.fold = nfolds, proximity=FALSE, ntree=100, keep.forest=TRUE)
 par(mar=c(5, 4, 4, 2) + 0.1)
 with(cv.rf, plot(n.var, error.cv, log="x", type="o", lwd=2))
 # Now put the full cross val out of the rfcv
 pts.extc$cvpred = cv.rf$predicted$`40` ## the '#' at end corresponds to the number of variables included should = number of vars used
-cv.RMSE = sqrt(mean((sqrt(pts.extc$wpg2) - pts.extc$cvpred)^2, na.rm=TRUE))
-cv.Rsquared = 1-var(sqrt(pts.extc$wpg2) - pts.extc$cvpred, na.rm=TRUE)/var(sqrt(pts.extc$wpg2), na.rm=TRUE)
+cv.RMSE = sqrt(mean((pts.extc$wpg2 - pts.extc$cvpred)^2, na.rm=TRUE))
+cv.Rsquared = 1-var(pts.extc$wpg2 - pts.extc$cvpred, na.rm=TRUE)/var(pts.extc$wpg2, na.rm=TRUE)
 cv.RMSE
 cv.Rsquared
-################### Manual Cross validation ################################
-
-ptspred.listcvm <- c(ptspred.list)
-pts.extcvm <- pts.ext[c(ptspred.listcvm)]
-pts.extcvm <- na.omit(pts.extcvm)# Remove any record with NA's (in any column - be careful)
-pts.extcvm  <- subset(pts.extcvm, pts.extcvm$sand_tot_psa != "NA")
-nfolds <- 10
-pts.extcvm$folds <- sample.int(nfolds,size =length(pts.extcvm$elevm),replace=T)
-formulaStringCVm <- as.formula(paste('sand_tot_psa ~','depth','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-pts.extcvm$mcvpred <- "NA"
-for (g in seq(nfolds)){
-  traindf <- subset(pts.extcvm, pts.extcvm$folds != g)
-  rf.pcvm <- randomForest(formulaStringCVm, data=traindf, importance=FALSE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-  pts.extcvm$mcvpred <- ifelse(pts.extcvm$folds == g, predict(rf.pcvm, newdata=pts.extcvm),pts.extcvm$mcvpred)
-  print(g)
-}
-pts.extcvm$mcvpred = as.numeric(pts.extcvm$mcvpred)
-cvm.RMSE = sqrt(mean((pts.extcvm$sand_tot_psa - pts.extcvm$mcvpred)^2, na.rm=TRUE))
-cvm.Rsquared = 1-var(pts.extcvm$sand_tot_psa - pts.extcvm$mcvpred, na.rm=TRUE)/var(pts.extcvm$sand_tot_psa, na.rm=TRUE)
-
-
-######################## Now look at residuals ###################################
-# Out-of-bag predictions
-pts.extc$clayOOB = predict(soiclass)
-pts.extc$claycverr = pts.extc$claycvpred - pts.extc$clay
-pts.extc$claycverrabs = abs(pts.extc$claycvpred - pts.extc$clay)
-formulaStringClayerr = as.formula(paste('claycverr ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverr = randomForest(formulaStringClayerr,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverr
-formulaStringClayerrabs = as.formula(paste('claycverrabs ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverrabs = randomForest(formulaStringClayerrabs,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverrabs
-varImpPlot(rfcverrabs)
-
