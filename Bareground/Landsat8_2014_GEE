@@ -1,0 +1,71 @@
+// Creation of dry landsat reflectance mosaic for Upper CO River: 2014 Google Earth Engine
+
+
+function Mosaic() {
+
+// Define boundary of clip extent
+var polygon = ee.FeatureCollection('users/naumi421/CO_River_watershed_Meade_4kmbuf_wgs');
+
+// Cloud Index Value
+// 61440 = Cloudy (high probability) Cirrus
+// 53248 = Cloudy (high probability) Non-Cirrus
+// 28672 = Cloudy (low probability) Cirrus
+
+// Change later to scenes from May thru July 2014
+var startDate = new Date('6/1/2014');
+var endDate = new Date('10/1/2014');
+var collection = ee.ImageCollection('LC8_L1T_TOA') // LC8, and LC8_L1T_TOA work
+    .filterDate(startDate, endDate)
+
+// From Noel at Google
+var maskL8 = function(image) {
+  var quality = image.select( 'BQA' );
+  var cloud01 = quality.eq(61440);
+  var cloud02 = quality.eq(53248);
+  var cloud03 = quality.eq(28672);
+  var maskedImage = image.mask().and(cloud01.or(cloud02).or(cloud03).not());
+  return image.mask(maskedImage);
+};
+
+var VizParams = {min:0, max:0.7, 'bands':'B6,B5,B4'};
+Map.setCenter(-109.65,39.5);
+
+// Select median pixels and clip
+var image2 = collection.median().clip(polygon);
+Map.addLayer(image2, VizParams, "Base Scene",false);
+//addToMap(justcloud01,{palette:'FFFFFF'},"High Cirrus");
+//addToMap(justcloud02,{palette:'FFFFFF'},"High Non-Cirrus");
+//addToMap(justcloud03,{palette:'FFFFFF'},"Low Cirrus");
+var collectionMasked = collection.map(maskL8);
+var image3 = collectionMasked.median().clip(polygon);
+Map.addLayer(image3, VizParams, "With Cloud Mask",true);
+
+var origPixels = image2.select(0).reduceRegion({reducer: "count", scale: 30, bestEffort: true});
+var maskedPixels = image3.select(0).reduceRegion({reducer: "count", scale: 30, bestEffort: true});
+
+//var count1 = origPixels.get('B1').getInfo()
+//var count2 = maskedPixels.get('B1').getInfo()
+//print(((count1 - count2) / count1) * 100 + "% cloudy")
+
+var image4 = image3.select(['B2','B3','B4','B5','B6','B7'])
+                      .multiply(10000).toFloat();
+
+Export.image(image4, 'ls814', {'scale': 30, 'maxPixels': 1000000000000, driveFolder:'LS82014'});
+var params = {
+  image:image4,
+  description:'dry2013',
+  folder:'EELS8',
+  fileNamePrefix:'l813d',
+  dimensions:40100,
+  region:image4.geometry(),
+  scale:30,
+  maxPixels:13762246470,
+};
+
+//Export.image.toDrive(params);
+//Export.image(image2, 'ls8dry14.tif', {'scale': 30, 'maxPixels': 1000000000000, driveFolder: 'LS8refl'});
+
+}
+Mosaic();
+
+
