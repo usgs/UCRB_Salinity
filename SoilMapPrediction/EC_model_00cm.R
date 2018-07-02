@@ -119,7 +119,7 @@ write.table(pts.ext, "cop_ncss17_ec12_2D_covarsc.txt", sep = "\t", row.names = F
 #pts$pscsmodalb = as.factor(pts$pscsmodalb)
 
 ## Prep for Random Forest
-pts.extc <- subset(pts.ext, as.numeric(pts.ext$depth_t) <= 30 & as.numeric(pts.ext$depth_b) > 30) # subset to chosen depth
+pts.extc <- subset(pts.ext, as.numeric(pts.ext$depth_t) <= 0 & as.numeric(pts.ext$depth_b) > 0) # subset to chosen depth
 ptspred.list <- gsub(".tif","", cov.grids)# Take .tif off of the grid list to just get the variable names
 pred <- "ec_12pre" ## Dependent variable
 ptspred.list <- c(ptspred.list,pred) #Add dependent variable
@@ -154,34 +154,10 @@ names(rasters)
 setwd("O:/Models_active_work/UpCo/ECmodel_wLIMS_2D/outputs")
 ## Parallelized predict
 beginCluster(30,type='SOCK')
-predl = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.025)),progress="text")
-predh = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.975)),progress="text")
 pred = clusterR(rasters, predict, args=list(model=soiclass),progress="text")
 endCluster()
-#s = stack(predh,predl)
-#PIwidth = overlay(s, fun=function(a,b) (a-b),progress = "text")
-#varrange = as.numeric(quantile(log(ptsc$ec_12pre), probs=c(0.975))-quantile(log(ptsc$ec_12pre), probs=c(0.025)))
-#PIrelwidth = overlay(s, fun=function(a,b) ((a-b)/varrange), progress = "text")
-predh_bt = calc(predh, fun=function(x) (exp(x)), progress="text")#If a backtransform is needed 10^(x) or exp(x)
-predl_bt = calc(predl, fun=function(x) (exp(x)), progress="text")
 pred_bt = calc(pred, fun=function(x) (exp(x)), progress="text")
-s_bt = stack(predh_bt,predl_bt)
-PIwidth_bt = overlay(s_bt, fun=function(a,b) (a-b),progress = "text")
-varrange_bt = as.numeric(quantile(ptsc$ec_12pre, probs=c(0.975))-quantile(ptsc$ec_12pre, probs=c(0.025)))
-PIrelwidth_bt = overlay(s_bt, fun=function(a,b) ((a-b)/varrange_bt), progress = "text")
-writeRaster(pred_bt, overwrite=TRUE,filename="EC_2D_30cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(pred, overwrite=TRUE,filename="EC_2D_30cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predl_bt, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_l_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(predh_bt, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_h_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predl, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_l.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(predh, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_h.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIrelwidth, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_relwidth.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-#writeRaster(PIwidth, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_width.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIwidth_bt, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_width_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-writeRaster(PIrelwidth_bt, overwrite=TRUE,filename="EC_2D_30cm_QRF_95PI_relwidth_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
-## Create lookup table (for categorical predictions)
-#lookup_tab = as.data.frame(soiclass$classes)
-#write.table(lookup_tab, file = "ESG_MLRA35_lookup_tab.txt", sep = "/t")
+writeRaster(pred_bt, overwrite=TRUE,filename="EC_2D_00cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), progress="text")
 
 
 ##################### Run Cross Validation ######################################
@@ -201,37 +177,4 @@ pts.extc$cvpred = cv.rf$predicted$`40` ## the '#' at end corresponds to the numb
 cv.RMSE = sqrt(mean((pts.extc$ec_12pre - pts.extc$cvpred)^2, na.rm=TRUE))
 cv.Rsquared = 1-var(pts.extc$ec_12pre - pts.extc$cvpred, na.rm=TRUE)/var(pts.extc$ec_12pre, na.rm=TRUE)
 
-################### Manual Cross validation ################################
-
-ptspred.listcvm <- c(ptspred.list)
-pts.extcvm <- pts.ext[c(ptspred.listcvm)]
-pts.extcvm <- na.omit(pts.extcvm)# Remove any record with NA's (in any column - be careful)
-pts.extcvm  <- subset(pts.extcvm, pts.extcvm$ec_12pre != "NA")
-nfolds <- 10
-pts.extcvm$folds <- sample.int(nfolds,size =length(pts.extcvm$elevm),replace=T)
-formulaStringCVm <- as.formula(paste('ec_12pre ~','depth','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-pts.extcvm$mcvpred <- "NA"
-for (g in seq(nfolds)){
-  traindf <- subset(pts.extcvm, pts.extcvm$folds != g)
-  rf.pcvm <- randomForest(formulaStringCVm, data=traindf, importance=FALSE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-  pts.extcvm$mcvpred <- ifelse(pts.extcvm$folds == g, predict(rf.pcvm, newdata=pts.extcvm),pts.extcvm$mcvpred)
-  print(g)
-}
-pts.extcvm$mcvpred = as.numeric(pts.extcvm$mcvpred)
-cvm.RMSE = sqrt(mean((pts.extcvm$ec_12pre - pts.extcvm$mcvpred)^2, na.rm=TRUE))
-cvm.Rsquared = 1-var(pts.extcvm$ec_12pre - pts.extcvm$mcvpred, na.rm=TRUE)/var(pts.extcvm$sec_12pre, na.rm=TRUE)
-
-
-######################## Now look at residuals ###################################
-# Out-of-bag predictions
-pts.extc$clayOOB = predict(soiclass)
-pts.extc$claycverr = pts.extc$ec_12pre - pts.extc$clay
-pts.extc$claycverrabs = abs(pts.extc$ec_12pre - pts.extc$clay)
-formulaStringClayerr = as.formula(paste('ec_12pre ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverr = randomForest(formulaStringClayerr,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverr
-formulaStringClayerrabs = as.formula(paste('ec_12pre ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverrabs = randomForest(formulaStringClayerrabs,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverrabs
-varImpPlot(rfcverrabs)
 
