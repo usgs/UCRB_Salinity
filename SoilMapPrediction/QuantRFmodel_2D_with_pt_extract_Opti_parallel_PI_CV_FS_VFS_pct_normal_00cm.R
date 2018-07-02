@@ -131,34 +131,9 @@ names(rasters)
 setwd("O:/Models_active_work/UpCo/FS_VFS_pct_2D_CV/Outputs")
 ## Parallelized predict
 beginCluster(31,type='SOCK')
-predl = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.025)),progress="text")
-predh = clusterR(rasters, predict, args=list(model=Qsoiclass,what=c(0.975)),progress="text")
 pred = clusterR(rasters, predict, args=list(model=soiclass),progress="text")
 endCluster()
-s = stack(predh,predl)
-PIwidth = overlay(s, fun=function(a,b) (a-b),progress = "text")
-varrange = as.numeric(quantile(pts.extc$sand_f_vf_psa, probs=c(0.975),na.rm=T)-quantile(pts.extc$sand_f_vf_psa, probs=c(0.025),na.rm=T))
-PIrelwidth = overlay(s, fun=function(a,b) ((a-b)/varrange), progress = "text")
-#predh_bt = calc(predh, fun=function(x) (x^2), progress="text")#If a backtransform is needed 10^(x) or exp(x)
-#predl_bt = calc(predl, fun=function(x) (x^2), progress="text")
-#pred_bt = calc(pred, fun=function(x) (x^2), progress="text")
-#s_bt = stack(predh_bt,predl_bt)
-#PIwidth_bt = overlay(s_bt, fun=function(a,b) (a-b),progress = "text")
-#varrange_bt = as.numeric(quantile(pts.extc$sand_f_vf_psa, probs=c(0.975))-quantile(pts.extc$sand_f_vf_psa, probs=c(0.025)))
-#PIrelwidth_bt = overlay(s_bt, fun=function(a,b) ((a-b)/varrange_bt), progress = "text")
-#writeRaster(pred_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
 writeRaster(pred, overwrite=T,filename="sand_f_vf_psa_00cm_QRF.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype="FLT4S", progress="text")
-#writeRaster(predl_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_l_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-#writeRaster(predh_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_h_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-writeRaster(predl, overwrite=T,filename="sand_f_vf_psa_00cm_QRF_95PI_l.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype="FLT4S", progress="text")
-writeRaster(predh, overwrite=T,filename="sand_f_vf_psa_00cm_QRF_95PI_h.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype="FLT4S", progress="text")
-writeRaster(PIrelwidth, overwrite=T,filename="sand_f_vf_psa_00cm_QRF_95PI_relwidth.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S",progress="text")
-writeRaster(PIwidth, overwrite=T,filename="sand_f_vf_psa_00cm_QRF_95PI_width.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype="FLT4S", progress="text")
-#writeRaster(PIwidth_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_width_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-#writeRaster(PIrelwidth_bt, overwrite=F,filename="sand_f_vf_psa_00cm_QRF_95PI_relwidth_bt.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"), datatype="FLT4S", progress="text")
-## Create lookup table (for categorical predictions)
-#lookup_tab = as.data.frame(soiclass$classes)
-#write.table(lookup_tab, file = "ESG_MLRA35_lookup_tab.txt", sep = "/t")
 
 
 ##################### Run Cross Validation ######################################
@@ -182,39 +157,5 @@ cv.RMSE
 cv.Rsquared
 NS
 
-summary(pts.extc$sand_f_vf_psa)
 
-################### Manual Cross validation ################################
-
-ptspred.listcvm <- c(ptspred.list)
-pts.extcvm <- pts.ext[c(ptspred.listcvm)]
-pts.extcvm <- na.omit(pts.extcvm)# Remove any record with NA's (in any column - be careful)
-pts.extcvm  <- subset(pts.extcvm, pts.extcvm$sand_tot_psa != "NA")
-nfolds <- 10
-pts.extcvm$folds <- sample.int(nfolds,size =length(pts.extcvm$elevm),replace=T)
-formulaStringCVm <- as.formula(paste('sand_tot_psa ~','depth','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-pts.extcvm$mcvpred <- "NA"
-for (g in seq(nfolds)){
-  traindf <- subset(pts.extcvm, pts.extcvm$folds != g)
-  rf.pcvm <- randomForest(formulaStringCVm, data=traindf, importance=FALSE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-  pts.extcvm$mcvpred <- ifelse(pts.extcvm$folds == g, predict(rf.pcvm, newdata=pts.extcvm),pts.extcvm$mcvpred)
-  print(g)
-}
-pts.extcvm$mcvpred = as.numeric(pts.extcvm$mcvpred)
-cvm.RMSE = sqrt(mean((pts.extcvm$sand_tot_psa - pts.extcvm$mcvpred)^2, na.rm=TRUE))
-cvm.Rsquared = 1-var(pts.extcvm$sand_tot_psa - pts.extcvm$mcvpred, na.rm=TRUE)/var(pts.extcvm$sand_tot_psa, na.rm=TRUE)
-
-
-######################## Now look at residuals ###################################
-# Out-of-bag predictions
-pts.extc$clayOOB = predict(soiclass)
-pts.extc$claycverr = pts.extc$claycvpred - pts.extc$clay
-pts.extc$claycverrabs = abs(pts.extc$claycvpred - pts.extc$clay)
-formulaStringClayerr = as.formula(paste('claycverr ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverr = randomForest(formulaStringClayerr,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverr
-formulaStringClayerrabs = as.formula(paste('claycverrabs ~','DEPTH','+', paste(gsub(".tif","", cov.grids), collapse="+")))
-rfcverrabs = randomForest(formulaStringClayerrabs,data = pts.extc, importance=TRUE, proximity=FALSE, ntree=100, keep.forest=TRUE)
-rfcverrabs
-varImpPlot(rfcverrabs)
 
