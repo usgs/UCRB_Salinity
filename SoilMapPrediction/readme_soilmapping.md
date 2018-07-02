@@ -30,4 +30,4 @@ cop_ncss17_FS_VFS_pct_covarsc.txt - NCD points use to train the fine + very fine
 
 cop_ncss17_Rock_Frgmt_2D_covarsc.txt - NCD points use to train the rock fragments (Rock) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
 
-cop_ncss17_ec12_2D_covarsc.txt - NCD points use to train the electrical conductivity (ec) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+cop_ncss17_ec12_2D_covarsc.txt - NCD points use to train the electrical conductivity (ec) models (0, 15, and 30 cm depths) with environmental covariates extracted. This table is the training matrix for the randomForest model.
