@@ -14,6 +14,20 @@ AWC_model_00cm.R - Code for air dry water content prediction at 00 cm depth.
 
 FS_model_00cm.R - Code for percent fine + very fine sand content prediction at 00 cm depth.
 
-SAR_model_00cm.R - Code for percent sodium adsorption ratio prediction at 00 cm depth.
+SAR_model_00cm.R - Code for percent sodium adsorption ratio (sar) prediction at 00 cm depth.
 
 Rock_model_00cm.R - Code for percent rock fragment by mass prediction at 00 cm depth.
+
+Kfactor_model_00cm.R - Code for soil erodibility prediction at 00 cm depth.
+
+UPCO_NCSSlabpeds_Kw_covars.txt - NCD points use to train K-factor model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+
+UCRB_ncss17_w15l2_covarsc.txt - NCD points use to train the air-dry water content (AWC) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+
+cop_ncss17SAR_pct_covarsc.txt - NCD points use to train the sodium adsorption ratio (SAR) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+
+cop_ncss17_FS_VFS_pct_covarsc.txt - NCD points use to train the fine + very fine sand (FS) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+
+cop_ncss17_Rock_Frgmt_2D_covarsc.txt - NCD points use to train the rock fragments (Rock) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
+
+cop_ncss17_ec12_2D_covarsc.txt - NCD points use to train the electrical conductivity (ec) model with environmental covariates extracted. This table is the training matrix for the randomForest model.
