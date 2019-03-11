@@ -73,7 +73,7 @@ hucs$FRAC <- NULL ## Need updated version
 huc_frac_tab <- read.delim("/home/tnaum/data/BLM_salinity/huc_frac_diversion.txt", stringsAsFactors = F)
 hucs <- merge(hucs,huc_frac_tab, by="WATERID") # New diversion fractions provided by Matt Miller 3/6/2018
 hucs_div <- subset(hucs, FRAC<1)
-#hucs_div$FRAC <- hucs_div$FRAC + 0.01 # Eliminate errors from zeros.
+#hucs_div$FRAC <- hucs_div$FRAC + 0.01 # Eliminate errors from zeros. ## Old approach before new diversion data provided
 hucdivlist <- hucs_div$WATERID
 guages_df$upstrmFrac <- 1
 ## Loop to attribute diversion losses to upstream loads for calibration reach calcs
@@ -83,7 +83,8 @@ for(h in hucdivlist){
   frac <- starthuc$FRAC
   startflow <- startreach$Corrected_Q_cms # F1
   flow <- startreach$Corrected_Q_cms*frac #F1,
-  ## Key assumption that modeled Q doesn't account for Frac and needs to be adjusted down did have flow being *(1/frac) & the correction being flow-startflow
+  ## New approach: Key assumption that modeled Q is after diversion and needs to be adjusted up at 
+  ## outlet to reflect the diverted flow in creating the load diversion factor.
   startflow_correction = startflow-flow 
   newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
   newguage <- newguage[!is.na(newguage)]
