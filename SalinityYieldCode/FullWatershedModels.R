@@ -942,4 +942,3 @@ gplt.SPvRF.geo
 SPvRF.plots <- grid.arrange(gplt.SPvRF,gplt.SPvRF.fa,gplt.SPvRF.geo,ncol=3)
 SPvRF.plots
 ggsave('FigX_YieldPlots_m.tif', plot = SPvRF.plots, device = "tiff", dpi = 600, limitsize = TRUE, width = 10, height = 2.75, units = 'in')
-
