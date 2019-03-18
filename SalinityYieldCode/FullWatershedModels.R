@@ -79,10 +79,10 @@ for(h in hucdivlist){
   starthuc <- hucs[hucs$WATERID %in% h,]
   startreach <- strm.reaches[strm.reaches$WATERID %in% h,]
   frac <- starthuc$FRAC
+  ## Key assumption that modeled Q is after diversion and needs to be adjusted up at 
+  ## outlet to reflect the diverted flow in creating the load diversion factor.
   startflow <- startreach$Corrected_Q_cms # F1
   flow <- startreach$Corrected_Q_cms*frac #F1,
-  ## New approach: Key assumption that modeled Q is after diversion and needs to be adjusted up at 
-  ## outlet to reflect the diverted flow in creating the load diversion factor.
   startflow_correction = startflow-flow 
   newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
   newguage <- newguage[!is.na(newguage)]
