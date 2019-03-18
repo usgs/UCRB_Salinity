@@ -1,0 +1,9 @@
+{
+    "path" : "~/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}
