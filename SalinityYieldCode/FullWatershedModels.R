@@ -81,7 +81,7 @@ for(h in hucdivlist){
   frac <- starthuc$FRAC
   startflow <- startreach$Corrected_Q_cms # F1
   flow <- startreach$Corrected_Q_cms*frac #F1,
-  ## New approach: Key assumption that modeled Q is after diversion is removed and needs to be adjusted up at 
+  ## New approach: Key assumption that modeled Q is after diversion and needs to be adjusted up at 
   ## outlet to reflect the diverted flow in creating the load diversion factor.
   startflow_correction = startflow-flow 
   newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
