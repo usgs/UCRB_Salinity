@@ -80,13 +80,12 @@ for(h in hucdivlist){
   startreach <- strm.reaches[strm.reaches$WATERID %in% h,]
   frac <- starthuc$FRAC
   ## Key assumption that modeled Q is after diversion and needs to be adjusted up at 
-  ## outlet to reflect the diverted flow in creating the load diversion factor.
-  startflow <- startreach$Corrected_Q_cms # F1
-  flow <- startreach$Corrected_Q_cms*frac #F1,
-  startflow_correction <- startflow-flow 
+  ## diversion reach and outlet to reflect the diverted flow in creating the load diversion factor.
+  divflow <- startreach$Corrected_Q_cms*(1/frac) # amount of flow lost at diversion
   newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
   newguage <- newguage[!is.na(newguage)]
-  guages_df$upstrmFrac <- ifelse(guages_df$guageid %in% newguage, frac, guages_df$upstrmFrac)
+  fracadd <- 1-((startreach$Corrected_Q_cms+divflow)/startreach$Corrected_Q_cms)
+  guages_df$upstrmFrac <- ifelse(guages_df$guageid %in% newguage, fracadd+guages_df$upstrmFrac, guages_df$upstrmFrac)
   fnode <- starthuc$TNODE
   while(length(fnode)>0){
     newhuc <- hucs[hucs$FNODE %in% fnode,]
@@ -95,11 +94,8 @@ for(h in hucdivlist){
     if (length(newguage)>0){ ## Finding proportion of flow from headwater reaches to correct,
       wid <- newhuc$WATERID
       newreach <- strm.reaches[strm.reaches$WATERID %in% wid,]
-      newflow <- newreach$Corrected_Q_cms + startflow_correction
-      #flowratio <- flow/newflow ## old approach
-      #newfrac <- 1-(flowratio*(1-frac)) ## old approach
-      newfrac <- newflow/(newflow+startflow_correction)
-      guages_df$upstrmFrac <- ifelse(guages_df$guageid == newguage, newfrac*guages_df$upstrmFrac, guages_df$upstrmFrac)
+      newfracadd <- 1-((newreach$Corrected_Q_cms+divflow)/newreach$Corrected_Q_cms)
+      guages_df$upstrmFrac <- ifelse(guages_df$guageid == newguage, newfracadd+guages_df$upstrmFrac, guages_df$upstrmFrac)
     }
     fnode <- newhuc$TNODE
   }
@@ -587,7 +583,7 @@ hucs_w_covs$sprg_load.persqkm <- hucs_w_covs$sprg.load/hucs_w_covs$sqkm
 
 ## Guages with diversions
 guages_div <- read.delim("/home/tnaum/data/BLM_salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions_fullwatersheds.txt", stringsAsFactors=F)
-guages_div$div_adj_load_tonsyr <- guages_div$adj_mean_ds_tonyr*(1/guages_div$upstrmFrac)
+guages_div$div_adj_load_tonsyr <- guages_div$adj_mean_ds_tonyr*guages_div$upstrmFrac
 guages_div <- subset(guages_div, select=c("guageid","div_adj_load_tonsyr"))
 huc_sum_guage_dfc <- merge(huc_sum_guage_df,guages_div, by="guageid")
 huc_sum_guage_dfc <- huc_sum_guage_dfc[!is.na(huc_sum_guage_dfc$div_adj_load_tonsyr),]
