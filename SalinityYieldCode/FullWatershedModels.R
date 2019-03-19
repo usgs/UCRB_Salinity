@@ -83,7 +83,7 @@ for(h in hucdivlist){
   ## outlet to reflect the diverted flow in creating the load diversion factor.
   startflow <- startreach$Corrected_Q_cms # F1
   flow <- startreach$Corrected_Q_cms*frac #F1,
-  startflow_correction = startflow-flow 
+  startflow_correction <- startflow-flow 
   newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
   newguage <- newguage[!is.na(newguage)]
   guages_df$upstrmFrac <- ifelse(guages_df$guageid %in% newguage, frac, guages_df$upstrmFrac)
