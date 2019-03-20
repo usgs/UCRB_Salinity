@@ -20,9 +20,9 @@ rm(required.packages, new.packages)
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 #### Read in data sources
-guages_df <- read.delim("/home/tnaum/data/BLM_salinity/UCRB_streamguage_ec_ttab.txt", stringsAsFactors=F)
-hucs <- readOGR("/home/tnaum/data/BLM_salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")
-strm.reaches <- readOGR("/home/tnaum/data/BLM_salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_network_l")
+guages_df <- read.delim("/home/tnaum/data/BLM_Salinity/UCRB_streamguage_ec_ttab.txt", stringsAsFactors=F)
+hucs <- readOGR("/home/tnaum/data/BLM_Salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")
+strm.reaches <- readOGR("/home/tnaum/data/BLM_Salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_network_l")
 hucs$STAID <- as.numeric(as.character(hucs$STAID))
 guages <- as.numeric(guages_df$guageid)
 guagehuc.path <- "/home/tnaum/data/BLM_salinity/guagehucs/"
@@ -68,7 +68,7 @@ snowfall::sfStop()
 
 ### Now compute downstream load contributions for all guages after accounting for diversions
 hucs$FRAC <- NULL ## Need updated version
-huc_frac_tab <- read.delim("/home/tnaum/data/BLM_salinity/huc_frac_diversion.txt", stringsAsFactors = F)
+huc_frac_tab <- read.delim("/home/tnaum/data/BLM_Salinity/huc_frac_diversion.txt", stringsAsFactors = F)
 hucs <- merge(hucs,huc_frac_tab, by="WATERID") # New diversion fractions provided by Matt Miller 3/6/2018
 hucs_div <- subset(hucs, FRAC<1)
 #hucs_div$FRAC <- hucs_div$FRAC + 0.01 # Eliminate errors from zeros. ## Old approach before new diversion data provided
@@ -103,8 +103,8 @@ for(h in hucdivlist){
   gc()
 }
 ## Save file
-setwd('/home/tnaum/data/BLM_salinity/DSM_SPARROW')
-write.table(guages_df, "UCRB_guages_with_DiversionFractions_fullwatersheds.txt", sep = "\t", row.names = FALSE)
+setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
+write.table(guages_df, "UCRB_guages_with_DiversionFractions_fullwatersheds_20190320.txt", sep = "\t", row.names = FALSE)
 
 
 #### Summarize rasters and SPARROW Reach Yields by Guage calibration reaches and append to guages_df
@@ -547,7 +547,7 @@ huc_sum_df$guageid <- huc_sum_df$guage
 huc_sum_guage_df = merge(huc_sum_df,guages_df, by="guageid")
 
 ### Save/reopen new summary data frame
-setwd('/home/tnaum/data/BLM_salinity/DSM_SPARROW')
+setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
 write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_fullwatersheds_2013.txt", sep = "\t", row.names = FALSE)
 huc_sum_guage_df <- read.delim("UCRB_guages_DSM_SPARROW_oldKw_fullwatersheds_2013.txt")
 
@@ -582,7 +582,7 @@ hucs_w_covs$ec75_100N.pct <- hucs_w_covs$ec75_100N.sqkm/hucs_w_covs$sqkm
 hucs_w_covs$sprg_load.persqkm <- hucs_w_covs$sprg.load/hucs_w_covs$sqkm
 
 ## Guages with diversions
-guages_div <- read.delim("/home/tnaum/data/BLM_salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions_fullwatersheds.txt", stringsAsFactors=F)
+guages_div <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions_fullwatersheds_20190320.txt", stringsAsFactors=F)
 guages_div$div_adj_load_tonsyr <- guages_div$adj_mean_ds_tonyr*guages_div$upstrmFrac
 guages_div <- subset(guages_div, select=c("guageid","div_adj_load_tonsyr"))
 huc_sum_guage_dfc <- merge(huc_sum_guage_df,guages_div, by="guageid")
@@ -593,7 +593,7 @@ huc_sum_guage_dfc$div_adj_load_tonsyrsqkm <- huc_sum_guage_dfc$div_adj_load_tons
 varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 ### RF for load: Log or not?
 formulaStringRF_adj_load <- as.formula(paste('log10(div_adj_load_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
-adj_load_rf = randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, na.rm=T)
+adj_load_rf <- randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, na.rm=T)
 adj_load_rf #summary
 varImpPlot(adj_load_rf)
 plot(log10(huc_sum_guage_dfc$adj_mean_ds_tonyr) ~ predict(adj_load_rf, newdata=huc_sum_guage_dfc))
