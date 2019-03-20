@@ -69,6 +69,7 @@ snowfall::sfStop()
 ### Now compute downstream load contributions for all guages after accounting for diversions
 hucs$FRAC <- NULL ## Need updated version
 huc_frac_tab <- read.delim("/home/tnaum/data/BLM_Salinity/huc_frac_diversion.txt", stringsAsFactors = F)
+huc_frac_tab$FRAC <- ifelse(huc_frac_tab$FRAC == 0, 0.01,huc_frac_tab$FRAC) # Adjust zero value to 99% diversion to avoid calculation errors
 hucs <- merge(hucs,huc_frac_tab, by="WATERID") # New diversion fractions provided by Matt Miller 3/6/2018
 hucs_div <- subset(hucs, FRAC<1)
 #hucs_div$FRAC <- hucs_div$FRAC + 0.01 # Eliminate errors from zeros. ## Old approach before new diversion data provided
@@ -81,20 +82,20 @@ for(h in hucdivlist){
   frac <- starthuc$FRAC
   ## Key assumption that modeled Q is after diversion and needs to be adjusted up at 
   ## diversion reach and outlet to reflect the diverted flow in creating the load diversion factor.
-  divflow <- startreach$Corrected_Q_cms*(1/frac) # amount of flow lost at diversion
-  newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID)
+  divflow <- (startreach$Corrected_Q_cms*(1/frac))-startreach$Corrected_Q_cms # amount of flow lost at diversion
+  newguage <- ifelse(starthuc$STAID > 0, starthuc$STAID, NA)
   newguage <- newguage[!is.na(newguage)]
-  fracadd <- 1-((startreach$Corrected_Q_cms+divflow)/startreach$Corrected_Q_cms)
+  fracadd <- ((startreach$Corrected_Q_cms+divflow)/startreach$Corrected_Q_cms)-1
   guages_df$upstrmFrac <- ifelse(guages_df$guageid %in% newguage, fracadd+guages_df$upstrmFrac, guages_df$upstrmFrac)
   fnode <- starthuc$TNODE
   while(length(fnode)>0){
     newhuc <- hucs[hucs$FNODE %in% fnode,]
-    newguage <- ifelse(newhuc$STAID > 0, newhuc$STAID)
+    newguage <- ifelse(newhuc$STAID > 0, newhuc$STAID, NA)
     newguage <- newguage[!is.na(newguage)]
     if (length(newguage)>0){ ## Finding proportion of flow from headwater reaches to correct,
       wid <- newhuc$WATERID
       newreach <- strm.reaches[strm.reaches$WATERID %in% wid,]
-      newfracadd <- 1-((newreach$Corrected_Q_cms+divflow)/newreach$Corrected_Q_cms)
+      newfracadd <- ((newreach$Corrected_Q_cms+divflow)/newreach$Corrected_Q_cms)-1
       guages_df$upstrmFrac <- ifelse(guages_df$guageid == newguage, newfracadd+guages_df$upstrmFrac, guages_df$upstrmFrac)
     }
     fnode <- newhuc$TNODE
@@ -568,7 +569,7 @@ huc_sum_guage_df$adj_mean_ds_tonyrsqkm <- huc_sum_guage_df$adj_mean_ds_tonyr/huc
 ## Hucs from original network (HUC_integration_allHUCs_DSM_SPARROW_oldKw_2013_datarelease.R)
 allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt") # Has covariates summed by all incremental reaches
 ## Merge with huc layer
-hucs_w_covs = merge(hucs,allhuc_sum_df, by="WATERID")
+hucs_w_covs <- merge(hucs,allhuc_sum_df, by="WATERID")
 hucs_w_covs$ec0_10.pct <- hucs_w_covs$ec0_10.sqkm/hucs_w_covs$sqkm
 hucs_w_covs$ec10_25.pct <- hucs_w_covs$ec10_25.sqkm/hucs_w_covs$sqkm
 hucs_w_covs$ec25_50.pct <- hucs_w_covs$ec25_50.sqkm/hucs_w_covs$sqkm
@@ -651,7 +652,7 @@ plot(log10(huc_sum_guage_df$adj_mean_ds_tonyrsqkm)~log10(huc_sum_guage_df$pred_a
 # Full list
 varlist_yield <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg_load.persqkm","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 formulaStringRF_adj_yield <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
-adj_yield_rf = randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE,nodesize=1) # Run 10x for model framework testing
+adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE,nodesize=1) # Run 10x for model framework testing
 adj_yield_rf ## log OOB 10x for framework testing
 # Check UCRB total load prediction
 hucs_w_covs$adj_yield_rf_log10test <- unname(predict(adj_yield_rf, newdata=hucs_w_covs))
@@ -659,17 +660,17 @@ hucs_w_covs$adj_yield_rf_yield_test <- 10^(hucs_w_covs$adj_yield_rf_log10test)
 hucs_w_covs$adj_yield_rf_load_test <- hucs_w_covs$adj_yield_rf_yield_test*hucs_w_covs$sqkm
 UCRBload.yield_rf_test <- sum(hucs_w_covs$adj_yield_rf_load_test, na.rm=T) ## Total UCRB load test, 15 (out of 10879) NAs come up in edge reaches
 ## Pruning process
-adj_yield_rf = randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7) # rerun with varying tune parameters until a relatively high OOB error is found, then prune
+adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7) # rerun with varying tune parameters until a relatively high OOB error is found, then prune
 adj_yield_rf #summary:
 varImpPlot(adj_yield_rf)#Choose importance break: 15 was chosen when running for paper
 # Prune list visuallly by importance
 varlist_yieldc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:15]) # chose top 15 variables
 formulaStringRF_adj_yieldc <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
-adj_yield_rfc = randomForest(formulaStringRF_adj_yieldc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
+adj_yield_rfc <- randomForest(formulaStringRF_adj_yieldc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
 adj_yield_rfc #Run 10x to see if prune increase OOB Rsq by 3,  after 10 runs, keep running until a high OOB Rsq (relative to 1st 10 runs) is acheived and use that model in next prune step
 varImpPlot(adj_yield_rfc)
 # Prune by one variable at a time until max oob Rsq acheived
-varlist_yieldcc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:14]) # chose top 15 variables
+varlist_yieldcc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:14]) # chose top 14 variables
 formulaStringRF_adj_yieldcc <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldcc, collapse="+")))# put in dep variable name
 adj_yield_rfcc = randomForest(formulaStringRF_adj_yieldcc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
 adj_yield_rfcc #Run 10x to see if prune increase OOB Rsq at all, if pruning helps, run these 5 steps again to test pruning another variable, and keep pruning until OOB doesn't improve
