@@ -14,10 +14,10 @@ rm(required.packages, new.packages)
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 #### Read in data sources
-guages_df <- read.delim("/home/tnaum/data/BLM_salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions.txt", stringsAsFactors=F)
+guages_df <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions.txt", stringsAsFactors=F)
 guages_df <- subset(guages_df, !(is.na(guages_df$upstrmFrac)))
 guages_df$div_adj_load_tonsyr <- guages_df$adj_mean_ds_tonyr*(1/guages_df$upstrmFrac) # Diversion correction
-hucs <- readOGR("/home/tnaum/data/BLM_salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")
+hucs <- readOGR("/home/tnaum/data/BLM_Salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")
 hucs$STAID <- as.numeric(as.character(hucs$STAID))
 guages <- as.numeric(guages_df$guageid)
 huclist <- hucs$WATERID
@@ -31,71 +31,71 @@ huc_summary_fn <- function(h, hucs){ # guages will be list
   ####  Rasters to summarize
   ### Source rasters
   ## Non irrigated ag
-  ec0_10 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec0_10s.tif")
-  ec10_25 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec10_25s.tif")
-  ec25_50 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec25_50s.tif")
-  ec50_75 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec50_75s.tif")
-  ec75_90 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec75_90s.tif")
-  ec90_100 <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec90_100s.tif")
+  ec0_10 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec0_10s.tif")
+  ec10_25 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec10_25s.tif")
+  ec25_50 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec25_50s.tif")
+  ec50_75 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec50_75s.tif")
+  ec75_90 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec75_90s.tif")
+  ec90_100 <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec90_100s.tif")
   ## Irrigated Ag
   # Flooded
-  ec0_75F <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec0_75sF.tif")
-  ec75_100F <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec75_100sF.tif")
+  ec0_75F <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec0_75sF.tif")
+  ec75_100F <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec75_100sF.tif")
   # Non-flooded irrigation type
-  ec75_100N <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec75_100sN.tif")
-  ec0_75N <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ec0_75sN.tif")
+  ec75_100N <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec75_100sN.tif")
+  ec0_75N <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ec0_75sN.tif")
   ## Point Source springs
-  sprg <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/pt_sourcerast.tif")
+  sprg <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/pt_sourcerast.tif")
   ### Basin Characterization Rasters (BCMs)
   ## Main BCM variables
-  ec50q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec50q.tif")
-  ec75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q.tif")
-  ec <- raster("/home/tnaum/data/BLM_salinity/risk_index/ecave_mask.tif")
-  kw <- raster("/home/tnaum/data/BLM_salinity/risk_index/kw_mask.tif")
-  ec90q <- raster("/home/tnaum/data/BLM_salinity/risk_index/ec90high.tif")
-  kw75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_kw75q.tif")
-  bg <- raster("/home/tnaum/data/BLM_salinity/risk_index/bareground_mask.tif")
-  flen <- raster("/home/tnaum/data/BLM_salinity/risk_index/flength_mask.tif")
-  facc<- raster("/home/tnaum/data/BLM_salinity/risk_index/CAlog10_mask.tif")
-  bgm75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/bgmacro75.tif")
-  bgm90q <- raster("/home/tnaum/data/BLM_salinity/risk_index/bgmacro90_done.tif")
-  bgm75q30p <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_bgm75q30p.tif")
+  ec50q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec50q.tif")
+  ec75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q.tif")
+  ec <- raster("/home/tnaum/data/BLM_Salinity/risk_index/ecave_mask.tif")
+  kw <- raster("/home/tnaum/data/BLM_Salinity/risk_index/kw_mask.tif")
+  ec90q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/ec90high.tif")
+  kw75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_kw75q.tif")
+  bg <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bareground_mask.tif")
+  flen <- raster("/home/tnaum/data/BLM_Salinity/risk_index/flength_mask.tif")
+  facc<- raster("/home/tnaum/data/BLM_Salinity/risk_index/CAlog10_mask.tif")
+  bgm75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bgmacro75.tif")
+  bgm90q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bgmacro90_done.tif")
+  bgm75q30p <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_bgm75q30p.tif")
   ## Risk indexes
-  ec75q_kw75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_kw75q.tif")
-  ec75q_facc75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_facc75q.tif")
-  ec75q_f500m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_f500m.tif")
-  ec75q_bgm75q30p <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_b75m30p.tif")
-  ec75q_bgm75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_bgm75q.tif")
-  ec75q_bgm75q_kw75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_bgm75q_kw75q.tif")
-  ec75q_bgm75q_facc75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_bgm75q_facc75q.tif")
-  ec75q_bgm75q_f500m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_bgm75q_f500m.tif")
-  ec90q_bgm90q40p_kw90q_facc90q_f500m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec90q_b90m40p_kw90q_facc90q_f500m.tif")
-  ec75q_bgm75q30p_kw75q_facc75q_f500m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_b75m30p_kw75q_facc75q_f500m.tif")
-  ec75q_bgm75q_kw75q_facc75q_f500m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q_bgm75q_kw75q_facc75q_f500m.tif")
-  ec50q_bgm75q30p_kw50q_facc50q_f1000m <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m.tif")
+  ec75q_kw75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_kw75q.tif")
+  ec75q_facc75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_facc75q.tif")
+  ec75q_f500m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_f500m.tif")
+  ec75q_bgm75q30p <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_b75m30p.tif")
+  ec75q_bgm75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_bgm75q.tif")
+  ec75q_bgm75q_kw75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_bgm75q_kw75q.tif")
+  ec75q_bgm75q_facc75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_bgm75q_facc75q.tif")
+  ec75q_bgm75q_f500m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_bgm75q_f500m.tif")
+  ec90q_bgm90q40p_kw90q_facc90q_f500m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec90q_b90m40p_kw90q_facc90q_f500m.tif")
+  ec75q_bgm75q30p_kw75q_facc75q_f500m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_b75m30p_kw75q_facc75q_f500m.tif")
+  ec75q_bgm75q_kw75q_facc75q_f500m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q_bgm75q_kw75q_facc75q_f500m.tif")
+  ec50q_bgm75q30p_kw50q_facc50q_f1000m <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m.tif")
   ## Other Soils variables
-  Brock <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/SG250_Rprob.tif") # Prob of bedrock <2m
-  sar <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/sar_m.tif") # Na Absorp ratio
-  rock <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/rock_m.tif")# surface rock content
-  fs <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/fs_vfs_m.tif") # % fine sand + vfs
-  awc <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/awc_m.tif")
+  Brock <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/SG250_Rprob.tif") # Prob of bedrock <2m
+  sar <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/sar_m.tif") # Na Absorp ratio
+  rock <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/rock_m.tif")# surface rock content
+  fs <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/fs_vfs_m.tif") # % fine sand + vfs
+  awc <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/awc_m.tif")
   ## DART variables
-  elev <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/elevm_m.tif")
-  ppt <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ppt_m.tif")
-  pptratio <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/ppt_ratio_m.tif")
-  protind <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/prot_index_m.tif")
-  slp <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/slope_m.tif")
-  sness <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/sness_m.tif") # raster of south vs north aspect
+  elev <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/elevm_m.tif")
+  ppt <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ppt_m.tif")
+  pptratio <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ppt_ratio_m.tif")
+  protind <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/prot_index_m.tif")
+  slp <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/slope_m.tif")
+  sness <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/sness_m.tif") # raster of south vs north aspect
   ## Miller et al., (2017) BCMs as pulled from Flint and Flint (2007)
-  exc <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/excess_m.tif")# excess water
-  cwd <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/deficit_m.tif")# Climate water deficit
-  mlt <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/melt_m.tif")# snowmelt
-  rch <- raster("/home/tnaum/data/BLM_salinity/DSM_SPARROW/inputs/rech_m.tif")
+  exc <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/excess_m.tif")# excess water
+  cwd <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/deficit_m.tif")# Climate water deficit
+  mlt <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/melt_m.tif")# snowmelt
+  rch <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/rech_m.tif")
   #### Guage raster prep
   hucpoly$rastfield <- 1
   e <- extent(hucpoly)
   ec0_10_hucrast <- crop(ec0_10,e)
-  guagerast.path <- (paste("/home/tnaum/data/BLM_salinity/DSM_SPARROW/hucrasts/hucrasts", h, "rast.tif", sep=""))
+  guagerast.path <- (paste("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/hucrasts/hucrasts", h, "rast.tif", sep=""))
   #guagerast <- rasterize(hucpoly, ec0_10_hucrast,  field=hucpoly$rastfield, progress="text", datatype='INT1U', filename=guagerast.path) # If guage rasts don't exist
   guagerast <- raster(guagerast.path) # for runs after the guage rasts have been made
   #### Process raster statistics for HUC
@@ -454,7 +454,7 @@ for(i in seq(1:length(huc_sum))){
 }
 
 
-setwd('/home/tnaum/data/BLM_salinity/DSM_SPARROW')
+setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
 write.table(huc_sum_df, "UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt", sep = "\t", row.names = FALSE) 
 huc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt")
 
