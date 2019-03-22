@@ -10,7 +10,7 @@
 ###################################################################
 
 ## Load packages
-required.packages <- c("raster", "sp", "rgdal","snow", "snowfall","parallel", "itertools","doParallel", "plyr", "ncdf4","maptools", "rgeos","stats","spdep","randomForest")# maybe need dplyr??
+required.packages <- c("raster", "sp", "rgdal","snow", "snowfall","parallel", "itertools","doParallel", "plyr", "ncdf4","maptools", "rgeos","stats","spdep","randomForest")
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(required.packages, require, character.only=T)
@@ -661,23 +661,33 @@ hucs_w_covs$adj_yield_rf_load_test <- hucs_w_covs$adj_yield_rf_yield_test*hucs_w
 UCRBload.yield_rf_test <- sum(hucs_w_covs$adj_yield_rf_load_test, na.rm=T) ## Total UCRB load test, 15 (out of 10879) NAs come up in edge reaches
 ## Pruning process
 adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7) # rerun with varying tune parameters until a relatively high OOB error is found, then prune
-adj_yield_rf #summary:
-varImpPlot(adj_yield_rf)#Choose importance break: 15 was chosen when running for paper
+adj_yield_rf #summary of ten runs OOB Rsq: 32.3, 32.43,33.63,34.66,31.96,33.07,33.45,33.05,34.53,32.49; ave = 33.157
+varImpPlot(adj_yield_rf)#Choose importance break: 21 was chosen when running for paper
 # Prune list visuallly by importance
-varlist_yieldc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:15]) # chose top 15 variables
+varlist_yieldc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:21]) # chose top 21 variables
 formulaStringRF_adj_yieldc <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
 adj_yield_rfc <- randomForest(formulaStringRF_adj_yieldc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
 adj_yield_rfc #Run 10x to see if prune increase OOB Rsq by 3,  after 10 runs, keep running until a high OOB Rsq (relative to 1st 10 runs) is acheived and use that model in next prune step
+# OOB summaries: 36.72,36.79,36.11,36.78,36.33,37.67,38.42,37.56,37.36,38.01; ave = 37.175
 varImpPlot(adj_yield_rfc)
 # Prune by one variable at a time until max oob Rsq acheived
-varlist_yieldcc <- names(sort(adj_yield_rf$importance[,1], decreasing=T)[0:14]) # chose top 14 variables
+varlist_yieldcc <- names(sort(adj_yield_rfc$importance[,1], decreasing=T)[0:20]) # chose top 20 variables
 formulaStringRF_adj_yieldcc <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldcc, collapse="+")))# put in dep variable name
-adj_yield_rfcc = randomForest(formulaStringRF_adj_yieldcc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
+adj_yield_rfcc <- randomForest(formulaStringRF_adj_yieldcc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
 adj_yield_rfcc #Run 10x to see if prune increase OOB Rsq at all, if pruning helps, run these 5 steps again to test pruning another variable, and keep pruning until OOB doesn't improve
+## OOB summaries, 20 vars: 38.89, 37.64,38.42, 37.47,38.43 ; ave: 38.17
 varImpPlot(adj_yield_rfcc)
+varlist_yieldccc <- names(sort(adj_yield_rfcc$importance[,1], decreasing=T)[0:19]) # chose top 19 variables
+formulaStringRF_adj_yieldccc <- as.formula(paste('log10(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldccc, collapse="+")))# put in dep variable name
+adj_yield_rfccc <- randomForest(formulaStringRF_adj_yieldccc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
+adj_yield_rfccc #Run 10x to see if prune increase OOB Rsq at all, if pruning helps, run these 5 steps again to test pruning another variable, and keep pruning until OOB doesn't improve
+## OOB summaries, 19 variables: 37.27, 37.81,38.34,38.89,37.56; ave: 37.974; not an improvement; so must use the 20 variable model
+varImpPlot(adj_yield_rfccc)
+## Assign the 20 variable model
 adj_yield_rf <- adj_yield_rfcc ## rename pruned model for future steps
 varImpPlot(adj_yield_rf)
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=awc.ave) ## Check pi plot for most influential variable(s)
+
 ## Start plotting fin
 huc_sum_guage_dfc$adj_yield_rf_log10pre <- unname(predict(adj_yield_rf, newdata=huc_sum_guage_dfc))
 plot(log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm) ~ huc_sum_guage_dfc$adj_yield_rf_log10pre)
@@ -696,10 +706,10 @@ hucs_w_covs$adj_yield_rf_load <- hucs_w_covs$adj_yield_rf_yield*hucs_w_covs$sqkm
 UCRBload.yield_rf_lm <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T)
 UCRBload.yield_rf_lm_metric <- UCRBload.yield_rf_lm*0.90718474 ## metric tons
 UCRBload.yield_rf_lm <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T)
-saveRDS(adj_yield_rf, "/home/tnaum/data/BLM_salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013.rds")
-saveRDS(adj_yield_rf_lm, "/home/tnaum/data/BLM_salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RFlm_2013.rds")
-adj_yield_rf <- readRDS("/home/tnaum/data/BLM_salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013.rds")
-adj_yield_rf_lm <- readRDS("/home/tnaum/data/BLM_salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RFlm_2013.rds")
+saveRDS(adj_yield_rf, "/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_v2.rds")
+saveRDS(adj_yield_rf_lm, "/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RFlm_2013_v2.rds")
+adj_yield_rf <- readRDS("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_v2.rds")
+adj_yield_rf_lm <- readRDS("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RFlm_2013_v2.rds")
 ## Fit metrics
 huc_sum_guage_dfc$adj_yield_rf_yield_log10 <- predict(adj_yield_rf_lm, newdata=huc_sum_guage_dfc)
 huc_sum_guage_dfc$adj_yield_rf_pre.nonlog <- 10^(huc_sum_guage_dfc$adj_yield_rf_log10pre)
@@ -724,7 +734,7 @@ huc_sum_guage_dfc$lmcvpredpre <- "NA"
 huc_sum_guage_dfc$lmcvpred <- "NA"
 for (g in seq(nfolds)){
   traindf <- subset(huc_sum_guage_dfc, huc_sum_guage_dfc$folds != g)
-  rf.pcvm <- randomForest(formulaStringRF_adj_yield, data=traindf, importance=FALSE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
+  rf.pcvm <- randomForest(formulaStringRF_adj_yieldccc, data=traindf, importance=FALSE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1,mtry=7)
   huc_sum_guage_dfc$lmcvpredpre <- ifelse(huc_sum_guage_dfc$folds == g, predict(rf.pcvm, newdata=huc_sum_guage_dfc),huc_sum_guage_dfc$lmcvpredpre)
   traindf$lmcvpredpre <- predict(rf.pcvm, newdata=traindf)
   attach(traindf)
@@ -739,16 +749,17 @@ huc_sum_guage_dfc$lmcvpred.nonlog <- 10^(huc_sum_guage_dfc$lmcvpred)
 huc_sum_guage_dfc$lmcvpred.nonlog_m <- huc_sum_guage_dfc$lmcvpred.nonlog * 0.90718474 # metric conversion
 lmcvm.RMSE_m <- sqrt(mean((log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm*0.90718474) - log10(huc_sum_guage_dfc$lmcvpred.nonlog_m))^2, na.rm=TRUE))
 lmcvm.Rsquared_m = 1-var(log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm*0.90718474) - log10(huc_sum_guage_dfc$lmcvpred.nonlog_m), na.rm=TRUE)/var(log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm*0.90718474), na.rm=TRUE)
-
- 
+# Add Fit and CV errors
+huc_sum_guage_dfc$adj_yield_rf_diff <- log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm) - huc_sum_guage_dfc$adj_yield_rf_yield_log10
+huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff <- log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm) - huc_sum_guage_dfc$lmcvpred 
 ## Look at residuals and autocorrelation
 huc_sum_guage_dfc$adj_yield_rf_lm_resid <- residuals(adj_yield_rf_lm)
 ## Save dataframe for future use
-saveRDS(huc_sum_guage_dfc,"/home/tnaum/data/BLM_salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_dataframe_wlmCV.rds")
-write.table(huc_sum_guage_dfc, "/home/tnaum/data/BLM_salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab.txt", sep = "\t", row.names = FALSE)
-huc_sum_guage_dfc <- read.delim("/home/tnaum/data/BLM_salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab.txt")
+saveRDS(huc_sum_guage_dfc,"/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_dataframe_wlmCV_v2.rds")
+write.table(huc_sum_guage_dfc, "/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab_v2.txt", sep = "\t", row.names = FALSE)
+huc_sum_guage_dfc <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab_v2.txt")
 ## Plots for paper: model fit and cross validation
-setwd("C:/Users/Travis/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
+setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
 ## Convert to metric
 huc_sum_guage_dfc$div_adj_load_tonsyrsqkm_m <- huc_sum_guage_dfc$div_adj_load_tonsyrsqkm * 0.90718474
 huc_sum_guage_dfc$adj_yield_rf_log10pre_m <- log10(10^(huc_sum_guage_dfc$adj_yield_rf_log10pre)*0.90718474)
@@ -767,7 +778,7 @@ huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog_m <- huc_sum_guage_dfc$adj_yiel
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m_log10unsigned <- log10(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog_m)
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m <- huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m_log10unsigned * huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_sign
 ## Set up high res figure
-tiff("FigX_Model_Performance.tif",width = 8, height = 5, units = 'in', res = 600 ) 
+tiff("FigX_Model_Performance_v2.tif",width = 8, height = 5, units = 'in', res = 600 ) 
 par(mfrow=c(2,3),mar=c(5,5,1,2),cex.lab = 1.0)
 plot(log10(huc_sum_guage_dfc$div_adj_load_tonsyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_log10pre_m,ylim=c(0,3),xlim=c(0,3),xlab=expression("Predicted Yield log10"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield log10"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
@@ -786,7 +797,7 @@ lines(x2,y2, col = 'red')#1:1 line
 dev.off() ## finishes rendering high res figure
 
 ## Look at residuals relative to guage locations
-guage.pts <- readOGR("C:/Dropbox/USGS/Utah_BLM_Salinity/SPARROW/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "guage_locations_rf_yield_model_alb")
+guage.pts <- readOGR("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/SPARROW/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "guage_locations_rf_yield_model_alb")
 guage.pts <- merge(guage.pts,huc_sum_guage_dfc, by="guage", all = FALSE)
 # Write Residuals to a shapefile
 guage.pts.residuals <- guage.pts[,c("WATERID","guage","adj_yield_rf_lm_resid")]
@@ -828,7 +839,7 @@ cor.test(log10(hucs_w_covs$sparrowyieldsqkm+0.01), log10(hucs_w_covs$rfyield+0.0
 plot(hucs_w_covs$sparrowyieldsqkm ~ hucs_w_covs$rfyield,xlim=c(0,1500))
 lines(x1,y1, col = 'red')
 hucs_yield_diff <- hucs_w_covs[,c("WATERID","rfyield","sprwyld","sqkm","diff")]
-writeOGR(hucs_yield_diff, dsn="C:/Dropbox/USGS/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_sparrow_diff_yield_2013")
+writeOGR(hucs_yield_diff, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_sparrow_diff_yield_2013_v2")
 
 ## ggplot Hex bin plots
 viri <- c("#440154FF", "#39568CFF", "#1F968BFF", "#73D055FF", "#FDE725FF") # Color ramp
@@ -842,9 +853,9 @@ gplt.SPvRF <- ggplot(data=hucs_w_covs.df, aes(rf.pltyield,sparrow.pltyield)) +
   theme(axis.text=element_text(size=12), legend.text=element_text(size=14), axis.title=element_text(size=14),plot.title = element_text(hjust = 0.5)) + 
   xlab("RF log10(yield)") + ylab("Sparrow log10(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri))+ggtitle("Total Predicted Yields")
 gplt.SPvRF
-setwd("C:/Users/Travis/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
+setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
 #ggsave('SPvRF_m.tif', plot = gplt.SPvRF, device = "tiff", dpi = 600, limitsize = TRUE)
-
+save.image("~/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/Figures_DSM_SPARROW_oldKw_fullwatersheds_2013_soilmonster_metric_RDATA_20190320.RData")
 
 ## Simulations with reduced disturbance 
 hucs_w_covs_dist_sim <- hucs_w_covs
