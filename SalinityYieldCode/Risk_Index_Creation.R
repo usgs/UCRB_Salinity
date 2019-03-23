@@ -14,27 +14,44 @@ rm(required.packages, new.packages)
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 ## Rasters to use
-bg <- raster("/home/tnaum/data/BLM_salinity/Landsat8_2013_07_01_10_30/bareground_2013/bg_ls8_2013_07_01_10_30alb.tif")
-mask <- raster("/media/tnaum/D/BLM_Salinity/water_mask/NLCD_water_mask.tif")
-flen <- raster("/media/tnaum/D/BLM_Salinity/FlowLength/FPL_MFD_seedsplus_1km2.tif")
-gap <- raster("/media/tnaum/D/GIS_Archive/UCRB_Covariates/GAP.tif")
-ec50q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec50q.tif")
-ec75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_ec75q.tif")
-ec <- raster("/home/tnaum/data/BLM_salinity/risk_index/ecave_mask.tif")
-kwc <- raster("/home/tnaum/data/BLM_salinity/risk_index/kw_mask.tif")
-ec90q <- raster("/home/tnaum/data/BLM_salinity/risk_index/ec90high.tif")
-kw75q <- raster("/home/tnaum/data/BLM_salinity/risk_index/srisk_kw75q.tif")
-flen <- raster("/home/tnaum/data/BLM_salinity/risk_index/flength_mask.tif")
-facc<- raster("/home/tnaum/data/BLM_salinity/risk_index/CAlog10_mask.tif")
+bg <- raster("/home/tnaum/data/BLM_Salinity/Landsat8_2013_07_01_10_30/bareground_2013/bg_ls8_2013_07_01_10_30alb.tif")
+mask <- raster("/home/tnaum/data/BLM_Salinity/water_mask/NLCD_water_mask.tif")
+gap <- raster("/home/tnaum/data/UCRB_Covariates/GAP.tif")
+ec <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ecave_mask.tif")
+kwc <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/kw_m.tif")
+flen <- raster("/home/tnaum/data/BLM_Salinity/risk_index/flength_mask.tif")
+facc<- raster("/home/tnaum/data/BLM_Salinity/risk_index/CAlog10_mask.tif")
 ## Gap lookup table
-gap_lup <- read.csv("/home/tnaum/Dropbox/USGS/Utah_BLM_Salinity/GAP_analysis/Class_lookup_UCRB.csv")
+gap_lup <- read.csv("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/GAP_analysis/Class_lookup_UCRB.csv")
 
 ## Set working Drive
-setwd("/home/tnaum/data/BLM_salinity/risk_index")
+setwd("/home/tnaum/data/BLM_Salinity/risk_index")
 
 ## Load up cluster for processing
-#cpus = detectCores(logical=TRUE)-1
-beginCluster(30,type='SOCK')
+cpus <- detectCores(logical=TRUE)-2
+beginCluster(cpus,type='SOCK')
+
+## Make ec and kw quantile base index dummy rasters
+# Areas with EC >75 %tile
+ec75q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.75,na.rm=T)),1,0)
+return(ind)
+}
+ec75q <- clusterR(ec, calc, args=list(fun=ec75q_fn),progress='text', datatype='INT1U', filename="srisk_ec75q.tif")
+# Areas with EC >50 %tile
+ec50q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.50,na.rm=T)),1,0)
+return(ind)
+}
+ec50q <- clusterR(ec, calc, args=list(fun=ec50q_fn),progress='text', datatype='INT1U', filename="srisk_ec50q.tif")
+# Areas with EC >90 %tile
+ec90q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.90,na.rm=T)),1,0)
+return(ind)
+}
+ec90q <- clusterR(ec, calc, args=list(fun=ec90q_fn),progress='text', datatype='INT1U', filename="srisk_ec90q.tif")
+# Areas with kw >75 %tile
+kw75q_fn <- function(kwc) { ind <- ifelse(kwc>unname(quantile(kwc, probs=0.75,na.rm=T)),1,0)
+return(ind)
+}
+kw75q <- clusterR(kwc, calc, args=list(fun=kw75q_fn),progress='text', datatype='INT1U', filename="srisk_kw75q.tif")
 
 ## GAP reclass to Macrogroup
 gap_macro_mat <- as.matrix(gap_lup[c("Value","macroval")], dimnames = NULL)
@@ -71,7 +88,7 @@ bgm <- clusterR(bg_stack, calc, args=list(fun=f_highcor), progress='text')
 writeRaster(bgm, overwrite=F,filename="bareground_mask.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U', progress="text")
 rm(bgc,bg_stack)
 gc()
-
+bgm <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bareground_mask.tif")
 ## Create empty grid for use in bare ground GAP macrogroup loop
 f_empty <- function(a) {a[a==1]<-0
 return(a)
@@ -79,7 +96,7 @@ return(a)
 mask_stk <- stack(mask)
 empty <- clusterR(mask_stk, calc, args=list(fun=f_empty), progress='text',filename="empty.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
 gc()
-
+empty <- raster("/home/tnaum/data/BLM_Salinity/risk_index/empty.tif")
 ##### Reclassify cover within GAP macrogroups by 90th percentiles
 gaplist <- unique(gap_lup$macroval)
 #fn_class90quan <- function(gapmacroval) {bgmask[bgm>quantile(bgm[gap_macro==gapmacroval], probs=0.9,na.rm=T)]<-1}
@@ -134,9 +151,9 @@ gc()
 
 ##### Now complex indices
 ## Some new rasters to include
-bgmacro90d <- raster("/home/tnaum/data/BLM_salinity/risk_index/bgmacro90_done.tif")
-bgm <- raster("/home/tnaum/data/BLM_salinity/risk_index/bareground_mask.tif")
-bgmacro75d <- raster("/home/tnaum/data/BLM_salinity/risk_index/bgmacro75.tif")
+bgmacro90d <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bgmacro90_done.tif")
+bgm <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bareground_mask.tif")
+bgmacro75d <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bgmacro75.tif")
 ## Most conservative index
 srisk_b90m40p_facc90q_ec90q_kw90q_f500m_fn <- function(bgm,bgmacro90d,ec90q,flen,facc,kwc) {
 ind <- ifelse((bgm>40|bgmacro90d==1)&ec90q==1&flen<500&facc>unname(quantile(facc, probs=0.9,na.rm=T))&kwc>unname(quantile(kwc, probs=0.9,na.rm=T)),1,NA)
