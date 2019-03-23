@@ -14,16 +14,12 @@ rm(required.packages, new.packages)
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 #### Read in data sources
-guages_df <- read.delim("UCRB_guages_with_DiversionFractions_fullwatersheds_20190320.txt", stringsAsFactors=F)
-guages_df <- subset(guages_df, !(is.na(guages_df$upstrmFrac)))
-guages_df$div_adj_load_tonsyr <- guages_df$adj_mean_ds_tonyr*(1/guages_df$upstrmFrac) # Diversion correction
 hucs <- readOGR("/home/tnaum/data/BLM_Salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")
 hucs$STAID <- as.numeric(as.character(hucs$STAID))
-guages <- as.numeric(guages_df$guageid)
 huclist <- hucs$WATERID
 
-#### Summarize rasters and SPARROW HUC Yields by Guage HUCs and append to guages_df
-huc_summary_fn <- function(h, hucs){ # guages will be list
+#### Summarize input rasters by incremental reach catchment (~11k)
+huc_summary_fn <- function(h, hucs){ # huclist will be list
   hucpoly <- hucs[hucs$WATERID %in% h,]
   hucarea_sqm <- gArea(hucpoly)
   sqkm <- hucarea_sqm/1000000
@@ -50,9 +46,9 @@ huc_summary_fn <- function(h, hucs){ # guages will be list
   ## Main BCM variables
   ec50q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec50q.tif")
   ec75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec75q.tif")
-  ec <- raster("/home/tnaum/data/BLM_Salinity/risk_index/ecave_mask.tif")
-  kw <- raster("/home/tnaum/data/BLM_Salinity/risk_index/kw_mask.tif")
-  ec90q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/ec90high.tif")
+  ec <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ecave_mask.tif")
+  kw <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/kw_m.tif")
+  ec90q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_ec90q.tif")
   kw75q <- raster("/home/tnaum/data/BLM_Salinity/risk_index/srisk_kw75q.tif")
   bg <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bareground_mask.tif")
   flen <- raster("/home/tnaum/data/BLM_Salinity/risk_index/flength_mask.tif")
@@ -77,7 +73,7 @@ huc_summary_fn <- function(h, hucs){ # guages will be list
   Brock <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/SG250_Rprob.tif") # Prob of bedrock <2m
   sar <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/sar_m.tif") # Na Absorp ratio
   rock <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/rock_m.tif")# surface rock content
-  fs <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/fs_vfs_m.tif") # % fine sand + vfs
+  fs <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/fs_m.tif") # % fine sand + vfs
   awc <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/awc_m.tif")
   ## DART variables
   elev <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/elevm_m.tif")
@@ -432,7 +428,7 @@ huc_summary_fn <- function(h, hucs){ # guages will be list
 ## Set up parallel list apply for huc summaries
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 snowfall::sfInit(parallel=TRUE, cpus=30) 
-snowfall::sfExport("guages","hucs", "huc_summary_fn")
+snowfall::sfExport("hucs", "huc_summary_fn")
 snowfall::sfLibrary(plyr)
 snowfall::sfLibrary(rgdal)
 snowfall::sfLibrary(maptools)
@@ -455,6 +451,4 @@ for(i in seq(1:length(huc_sum))){
 
 
 setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
-write.table(huc_sum_df, "UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt", sep = "\t", row.names = FALSE) 
-huc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt")
-
+write.table(huc_sum_df, "UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt", sep = "\t", row.names = FALSE) 

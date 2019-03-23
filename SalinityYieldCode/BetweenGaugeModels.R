@@ -570,7 +570,7 @@ write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_WithDiversions.txt"
 huc_sum_guage_df <- read.delim("UCRB_guages_DSM_SPARROW_oldKw_WithDiversions.txt")
 
 ## Hucs from original network
-allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_oldKw.txt")
+allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt")
 ## Merge with huc layer
 hucs_w_covs = merge(hucs,allhuc_sum_df, by="WATERID")
 hucs_w_covs$ec0_10.pct <- hucs_w_covs$ec0_10.sqkm/hucs_w_covs$sqkm
