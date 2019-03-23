@@ -567,7 +567,7 @@ huc_sum_guage_df$sprg_load.persqkm <- huc_sum_guage_df$sprg.load/huc_sum_guage_d
 huc_sum_guage_df$adj_mean_ds_tonyrsqkm <- huc_sum_guage_df$adj_mean_ds_tonyr/huc_sum_guage_df$sqkm
 
 ## Hucs from original network (HUC_integration_allHUCs_DSM_SPARROW_oldKw_2013_datarelease.R)
-allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_oldKw_2013.txt") # Has covariates summed by all incremental reaches
+allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt") # Has covariates summed by all incremental reaches
 ## Merge with huc layer
 hucs_w_covs <- merge(hucs,allhuc_sum_df, by="WATERID")
 hucs_w_covs$ec0_10.pct <- hucs_w_covs$ec0_10.sqkm/hucs_w_covs$sqkm

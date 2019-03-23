@@ -14,7 +14,7 @@ rm(required.packages, new.packages)
 rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 #### Read in data sources
-guages_df <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/UCRB_guages_with_DiversionFractions.txt", stringsAsFactors=F)
+guages_df <- read.delim("UCRB_guages_with_DiversionFractions_fullwatersheds_20190320.txt", stringsAsFactors=F)
 guages_df <- subset(guages_df, !(is.na(guages_df$upstrmFrac)))
 guages_df$div_adj_load_tonsyr <- guages_df$adj_mean_ds_tonyr*(1/guages_df$upstrmFrac) # Diversion correction
 hucs <- readOGR("/home/tnaum/data/BLM_Salinity/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "sir20175009_UCRB_SPARROW_catchment_p")

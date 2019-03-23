@@ -271,6 +271,36 @@ ec75q_bgm75q30p_f500m_stk <-stack(bgm,bgmacro75d,ec75q,flen)
 srisk_ec75q_bgm75q30p_f500m <- clusterR(ec75q_bgm75q30p_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q30p_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q30p_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
 gc() # Flush out RAM
 
+## EC75q  kw > 75th quan
+srisk_ec75q_kw75q_fn <- function(ec75q,kw75q) {
+  ind <- ifelse(ec75q==1&kw75q==1,1,NA)
+  return(ind) 
+}
+srisk_ec75q_kw75q_stk <-stack(ec75q,kw75q)
+srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+## EC75q  facc > 75th quan
+srisk_ec75q_facc75q_fn <- function(ec75q,facc) {
+  ind <- ifelse(ec75q==1&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  return(ind) 
+}
+srisk_ec75q_facc75q_stk <-stack(ec75q,facc)
+srisk_ec75q_facc75q <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+## EC75q,  flen > 75th quan
+srisk_ec75q_f500m_fn <- function(ec75q,flen) {
+  ind <- ifelse(ec75q==1&flen>unname(quantile(flen, probs=0.75,na.rm=T)),1,NA)
+  return(ind) 
+}
+srisk_ec75q_f500m_stk <-stack(ec75q,flen)
+srisk_ec75q_f500m <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+## EC75q,  kw > 75th quan
+srisk_ec75q_kw75q_fn <- function(ec,kwc) {
+  ind <- ifelse(ec>unname(quantile(ec, probs=0.75,na.rm=T))&kwc>unname(quantile(kwc, probs=0.75,na.rm=T)),1,NA)
+  return(ind) 
+}
+srisk_ec75q_kw75q_stk <-stack(ec,kwc)
+srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+gc() # Flush out RAM
+
 endCluster()
 
 
