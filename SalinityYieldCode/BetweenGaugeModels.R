@@ -609,7 +609,7 @@ varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90
 #varlist <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 formulaStringRF_adj_load <- as.formula(paste('log(cal_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
 adj_load_rf <- randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, nodesize=1) 
-adj_load_rf #summary: record for 10x runs then record 
+adj_load_rf # Rsq = 64.07%, 3/28/2019
 varImpPlot(adj_load_rf)
 setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
 saveRDS(adj_load_rf,"BtwGauge_adj_load_RF_NASIS.rds")
@@ -628,7 +628,7 @@ varlist_yield <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_
 #varlist_yield <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 formulaStringRF_adj_yield <- as.formula(paste('log(cal_tonsyrsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
 adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE)
-adj_yield_rf # Record for 10x runs for approach testing
+adj_yield_rf # Rsq = 22.11%, 3/28/2019
 varImpPlot(adj_yield_rf)
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave) ## Check pi plot for most influential variable(s)
 saveRDS(adj_yield_rf,"BtwGauge_adj_yield_RF_NASIS.rds")
