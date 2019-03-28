@@ -322,23 +322,23 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   kw75q.pct <- (cellStats(kw75q_hucrast, stat='sum')*900)/hucarea_sqm #fast
   rm(kw75q_hucrast,kw75q_stk)
   ## Average % bareground exposed
-  bgm_hucrast <- crop(bgm,e, progress="text")
-  bgm_stk <- stack(bgm_hucrast,guagerast)
-  bgm_hucrast <- overlay(bgm_stk,fun=f_mask) #fast
-  bgm.ave <- cellStats(bgm_hucrast, stat='mean') # was wrong (sum) in 3/2 first run: can divide huc area by cell area to get pixel count to create average
-  rm(bgm_hucrast,bgm_stk)
+  bg_hucrast <- crop(bg,e, progress="text")
+  bg_stk <- stack(bg_hucrast,guagerast)
+  bg_hucrast <- overlay(bg_stk,fun=f_mask) #fast
+  bg.ave <- cellStats(bg_hucrast, stat='mean') 
+  rm(bg_hucrast,bg_stk)
   ## Average flowlength (m)
   flen_hucrast <- crop(flen,e, progress="text")
   flen_stk <- stack(flen_hucrast,guagerast)
   flen_hucrast <- overlay(flen_stk,fun=f_mask) #fast
-  flen.ave <- cellStats(flen_hucrast, stat='mean') # was wrong (sum) in 3/2 first run: can divide huc area by cell area to get pixel count to create average
+  flen.ave <- cellStats(flen_hucrast, stat='mean') 
   rm(flen_hucrast,flen_stk)
   gc()
   ## Average upstream (flow) area accumulation (m)
   facc_hucrast <- crop(facc,e, progress="text")
   facc_stk <- stack(facc_hucrast,guagerast)
   facc_hucrast <- overlay(facc_stk,fun=f_mask) #fast
-  facc.ave <- cellStats(facc_hucrast, stat='mean') # was wrong (sum) in 3/2 first run: can divide huc area by cell area to get pixel count to create average
+  facc.ave <- cellStats(facc_hucrast, stat='mean') 
   rm(facc_hucrast,facc_stk)
   ## % of area with bareground >75th quantile within USGS GAP macrogroup
   bgm75q_hucrast <- crop(bgm75q,e, progress="text")
@@ -384,6 +384,30 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   ec75q_bgm75q30p_hucrast <- overlay(ec75q_bgm75q30p_stk,fun=f_mask) #fast
   ec75q_bgm75q30p.pct <- (cellStats(ec75q_bgm75q30p_hucrast, stat='sum')*900)/hucarea_sqm #fast
   rm(ec75q_bgm75q30p_hucrast,ec75q_bgm75q30p_stk)
+  ## % of area with ec >75th quan, bg >75th quan within USGS GAP macrogroup
+  ec75q_bgm75q_hucrast <- crop(ec75q_bgm75q,e, progress="text")
+  ec75q_bgm75q_stk <- stack(ec75q_bgm75q_hucrast,guagerast)
+  ec75q_bgm75q_hucrast <- overlay(ec75q_bgm75q_stk,fun=f_mask) #fast
+  ec75q_bgm75q.pct <- (cellStats(ec75q_bgm75q_hucrast, stat='sum')*900)/hucarea_sqm #fast
+  rm(ec75q_bgm75q_hucrast,ec75q_bgm75q_stk)
+  ## % of area with ec >75th quan, bg >75th quan within USGS GAP macrogroup, and kw >75th percentile
+  ec75q_bgm75q_kw75q_hucrast <- crop(ec75q_bgm75q_kw75q,e, progress="text")
+  ec75q_bgm75q_kw75q_stk <- stack(ec75q_bgm75q_kw75q_hucrast,guagerast)
+  ec75q_bgm75q_kw75q_hucrast <- overlay(ec75q_bgm75q_kw75q_stk,fun=f_mask) #fast
+  ec75q_bgm75q_kw75q.pct <- (cellStats(ec75q_bgm75q_kw75q_hucrast, stat='sum')*900)/hucarea_sqm #fast
+  rm(ec75q_bgm75q_kw75q_hucrast,ec75q_bgm75q_kw75q_stk)
+  ## % of area with ec >75th quan, bg >75th quan within USGS GAP macrogroup, and facc >75th percentile
+  ec75q_bgm75q_facc75q_hucrast <- crop(ec75q_bgm75q_facc75q,e, progress="text")
+  ec75q_bgm75q_facc75q_stk <- stack(ec75q_bgm75q_facc75q_hucrast,guagerast)
+  ec75q_bgm75q_facc75q_hucrast <- overlay(ec75q_bgm75q_facc75q_stk,fun=f_mask) #fast
+  ec75q_bgm75q_facc75q.pct <- (cellStats(ec75q_bgm75q_facc75q_hucrast, stat='sum')*900)/hucarea_sqm #fast
+  rm(ec75q_bgm75q_facc75q_hucrast,ec75q_bgm75q_facc75q_stk)
+  ## % of area with ec >75th quan, bg >75th quan within USGS GAP macrogroup, and flen < 500m
+  ec75q_bgm75q_f500m_hucrast <- crop(ec75q_bgm75q_f500m,e, progress="text")
+  ec75q_bgm75q_f500m_stk <- stack(ec75q_bgm75q_f500m_hucrast,guagerast)
+  ec75q_bgm75q_f500m_hucrast <- overlay(ec75q_bgm75q_f500m_stk,fun=f_mask) #fast
+  ec75q_bgm75q_f500m.pct <- (cellStats(ec75q_bgm75q_f500m_hucrast, stat='sum')*900)/hucarea_sqm #fast
+  rm(ec75q_bgm75q_f500m_hucrast,ec75q_bgm75q_f500m_stk)
   ## % of area with ec >90th quan, bg >90th quan within USGS GAP macrogroup or > 40% absolute, kw > 90th quan, facc > 90q, flen < 500m
   ec90q_bgm90q40p_kw90q_facc90q_f500m_hucrast <- crop(ec90q_bgm90q40p_kw90q_facc90q_f500m,e, progress="text")
   ec90q_bgm90q40p_kw90q_facc90q_f500m_stk <- stack(ec90q_bgm90q40p_kw90q_facc90q_f500m_hucrast,guagerast)
@@ -396,13 +420,12 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   ec75q_bgm75q30p_kw75q_facc75q_f500m_hucrast <- overlay(ec75q_bgm75q30p_kw75q_facc75q_f500m_stk,fun=f_mask) #fast
   ec75q_bgm75q30p_kw75q_facc75q_f500m.pct <- (cellStats(ec75q_bgm75q30p_kw75q_facc75q_f500m_hucrast, stat='sum')*900)/hucarea_sqm #fast
   rm(ec75q_bgm75q30p_kw75q_facc75q_f500m_hucrast,ec75q_bgm75q30p_kw75q_facc75q_f500m_stk)
-  ## % of area with ec >50th quan, bg >75th quan within USGS GAP macrogroup, kw > 75th quan, facc > 75 quan, flen < 500m
-  ec50q_bgm75q_kw75q_facc75q_f500m_hucrast <- crop(ec50q_bgm75q_kw75q_facc75q_f500m,e, progress="text")
-  ec50q_bgm75q_kw75q_facc75q_f500m_stk <- stack(ec50q_bgm75q_kw75q_facc75q_f500m_hucrast,guagerast)
-  ec50q_bgm75q_kw75q_facc75q_f500m_hucrast <- overlay(ec50q_bgm75q_kw75q_facc75q_f500m_stk,fun=f_mask) #fast
-  ec50q_bgm75q_kw75q_facc75q_f500m.pct <- (cellStats(ec50q_bgm75q_kw75q_facc75q_f500m_hucrast, stat='sum')*900)/hucarea_sqm #fast
-  rm(ec50q_bgm75q_kw75q_facc75q_f500m_hucrast,ec50q_bgm75q_kw75q_facc75q_f500m_stk)
-  gc()
+  ## % of area with ec >75th quan, bg >75th quan within USGS GAP macrogroup, kw > 75th quan, facc > 75 quan, flen < 500m
+  ec75q_bgm75q_kw75q_facc75q_f500m_hucrast <- crop(ec75q_bgm75q_kw75q_facc75q_f500m,e, progress="text")
+  ec75q_bgm75q_kw75q_facc75q_f500m_stk <- stack(ec75q_bgm75q_kw75q_facc75q_f500m_hucrast,guagerast)
+  ec75q_bgm75q_kw75q_facc75q_f500m_hucrast <- overlay(ec75q_bgm75q_kw75q_facc75q_f500m_stk,fun=f_mask) #fast
+  ec75q_bgm75q_kw75q_facc75q_f500m.pct <- (cellStats(ec75q_bgm75q_kw75q_facc75q_f500m_hucrast, stat='sum')*900)/hucarea_sqm #fast
+  rm(ec75q_bgm75q_kw75q_facc75q_f500m_hucrast,ec75q_bgm75q_kw75q_facc75q_f500m_stk)
   ## % of area with ec >50th quan, bg >75th quan within USGS GAP macrogroup, kw > 75th quan, facc > 75 quan, flen < 1000m
   ec50q_bgm75q30p_kw50q_facc50q_f1000m_hucrast <- crop(ec50q_bgm75q30p_kw50q_facc50q_f1000m,e, progress="text")
   ec50q_bgm75q30p_kw50q_facc50q_f1000m_stk <- stack(ec50q_bgm75q30p_kw50q_facc50q_f1000m_hucrast,guagerast)
@@ -436,7 +459,7 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   fs.ave <- cellStats(fs_hucrast, stat='mean')
   rm(fs_hucrast,fs_stk)
   gc()
-  ## Average available water content from 15B (wilting point) to air dry (residual moisture) in surface soil horizon
+  ## Average available water content: wilting point to field capacity
   awc_hucrast <- crop(awc,e, progress="text")
   awc_stk <- stack(awc_hucrast,guagerast)
   awc_hucrast <- overlay(awc_stk,fun=f_mask) #fast
@@ -540,7 +563,7 @@ for(i in seq(1:length(huc_sum))){
   print(paste("Done with ", i, sep=""))
 }
 huc_sum_df$guageid <- huc_sum_df$guage
-huc_sum_guage_df = merge(huc_sum_df,guages_df, by="guageid")
+huc_sum_guage_df <- merge(huc_sum_df,guages_df, by="guageid")
 
 ## Create source percentage variables for direct yield-based modeling
 huc_sum_guage_df$ec0_10.pct <- huc_sum_guage_df$ec0_10.sqkm/huc_sum_guage_df$sqkm
@@ -558,8 +581,8 @@ huc_sum_guage_df$cal_tonsyrsqkm <- huc_sum_guage_df$cal_tonsyr/huc_sum_guage_df$
 
 ## Files
 setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
-write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_WithDiversions.txt", sep = "\t", row.names = FALSE)
-huc_sum_guage_df <- read.delim("UCRB_guages_DSM_SPARROW_oldKw_WithDiversions.txt")
+write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_WithDiversions_BtwGauge_NASIS.txt", sep = "\t", row.names = FALSE)
+huc_sum_guage_df <- read.delim("UCRB_guages_DSM_SPARROW_oldKw_WithDiversions_BtwGauge_NASIS.txt")
 
 ## Hucs from original network
 allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt")
@@ -581,16 +604,18 @@ hucs_w_covs$sprg_load.persqkm <- hucs_w_covs$sprg.load/hucs_w_covs$sqkm
 huc_sum_guage_dfc <- subset(huc_sum_guage_df, cal_tonsyr > 0)
 
 #### Random Forest Predictions ########################
-library(randomForest)
 varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 ### RF for load: Log or not?
 #varlist <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
-formulaStringRF_adj_load <- as.formula(paste('log10(cal_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
-adj_load_rf = randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, nodesize=1) 
+formulaStringRF_adj_load <- as.formula(paste('log(cal_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
+adj_load_rf <- randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, nodesize=1) 
 adj_load_rf #summary: record for 10x runs then record 
+varImpPlot(adj_load_rf)
+setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
+saveRDS(adj_load_rf,"BtwGauge_adj_load_RF_NASIS.rds")
 ## Check prediction of UCRB total load
-allHucloadslog10 <- unname(predict(adj_load_rf, newdata=hucs_w_covs))
-allHucloads <- 10^(as.numeric(allHucloadslog10))
+allHucloadslog <- unname(predict(adj_load_rf, newdata=hucs_w_covs))
+allHucloads <- exp(as.numeric(allHucloadslog))
 UCRBload <- sum(allHucloads, na.rm=T) # Record for approach testing
 
 
@@ -601,12 +626,14 @@ UCRBload <- sum(allHucloads, na.rm=T) # Record for approach testing
 varlist_yield <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg_load.persqkm","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 # Modified list
 #varlist_yield <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
-formulaStringRF_adj_yield <- as.formula(paste('log10(cal_tonsyrsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
-adj_yield_rf = randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE)
+formulaStringRF_adj_yield <- as.formula(paste('log(cal_tonsyrsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
+adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE)
 adj_yield_rf # Record for 10x runs for approach testing
 varImpPlot(adj_yield_rf)
+partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave) ## Check pi plot for most influential variable(s)
+saveRDS(adj_yield_rf,"BtwGauge_adj_yield_RF_NASIS.rds")
 ## Check prediction of UCRB total load
-hucs_w_covs$adj_yield_rf_log10 <- unname(predict(adj_yield_rf, newdata=hucs_w_covs))
-hucs_w_covs$adj_yield_rf_yield <- 10^(hucs_w_covs$adj_yield_rf_log10)
+hucs_w_covs$adj_yield_rf_log <- unname(predict(adj_yield_rf, newdata=hucs_w_covs))
+hucs_w_covs$adj_yield_rf_yield <- exp(hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs$adj_yield_rf_load <- hucs_w_covs$adj_yield_rf_yield*hucs_w_covs$sqkm
 UCRBload <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T) # Record for approach testing
