@@ -450,5 +450,5 @@ for(i in seq(1:length(huc_sum))){
 }
 
 
-setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
-write.table(huc_sum_df, "UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt", sep = "\t", row.names = FALSE) 
+setwd('/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode')
+write.table(huc_sum_df, "UCRB_allHUCs_DSM_SPARROW_2013_NASIS.txt", sep = "\t", row.names = FALSE) 

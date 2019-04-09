@@ -74,7 +74,6 @@ huc_frac_tab <- read.delim("/home/tnaum/data/BLM_Salinity/huc_frac_diversion.txt
 huc_frac_tab$FRAC <- ifelse(huc_frac_tab$FRAC == 0, 0.01,huc_frac_tab$FRAC) # Adjust zero value to 99% diversion to avoid calculation errors
 hucs <- merge(hucs,huc_frac_tab, by="WATERID") # New diversion fractions provided by Matt Miller 3/6/2018
 hucs_div <- subset(hucs, FRAC<1)
-#hucs_div$FRAC <- hucs_div$FRAC + 0.01 # Eliminate errors from zeros. ## Old approach before new diversion data provided
 hucdivlist <- hucs_div$WATERID
 guages_df$upstrmFrac <- 1
 ## Loop to attribute diversion losses to upstream loads for calibration reach calcs
@@ -109,10 +108,9 @@ for(h in hucdivlist){
   print(paste("Finished with ", h, sep=""))
   gc()
 }
-setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
-write.table(guages_df, "UCRB_guages_with_DiversionFractions_btwGauges_20190327.txt", sep = "\t", row.names = FALSE)
-
-
+setwd('/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode')
+# write.table(guages_df, "UCRB_guages_with_DiversionFractions_btwGauges_20190327.txt", sep = "\t", row.names = FALSE)
+guages_df <- read.delim("UCRB_guages_with_DiversionFractions_btwGauges_20190327.txt")
 
 
 #### Update data for calibration reach covariate and load summarization
@@ -131,7 +129,8 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   upstrguages <- guages_df[guages_df$guageid %in% upstrguagelist,]
   calguage <- guages_df[guages_df$guageid %in% g,]
   upstr.load <- sum(upstrguages$adj_mean_ds_tonyr)
-  cal.load <- calguage$div_adj_load_tonsyr - upstr.load
+  cal.load <- calguage$adj_mean_ds_tonyr - upstr.load
+  cal.load.div <- calguage$div_adj_load_tonsyr - upstr.load
   hucsubset <- hucs[hucs$WATERID %in% huclist,]
   hucarea_sqm <- gArea(hucpoly)
   sqkm <- hucarea_sqm/1000000
@@ -325,20 +324,20 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   bg_hucrast <- crop(bg,e, progress="text")
   bg_stk <- stack(bg_hucrast,guagerast)
   bg_hucrast <- overlay(bg_stk,fun=f_mask) #fast
-  bg.ave <- cellStats(bg_hucrast, stat='mean') 
+  bg.ave <- cellStats(bg_hucrast, stat='mean')
   rm(bg_hucrast,bg_stk)
   ## Average flowlength (m)
   flen_hucrast <- crop(flen,e, progress="text")
   flen_stk <- stack(flen_hucrast,guagerast)
   flen_hucrast <- overlay(flen_stk,fun=f_mask) #fast
-  flen.ave <- cellStats(flen_hucrast, stat='mean') 
+  flen.ave <- cellStats(flen_hucrast, stat='mean')
   rm(flen_hucrast,flen_stk)
   gc()
   ## Average upstream (flow) area accumulation (m)
   facc_hucrast <- crop(facc,e, progress="text")
   facc_stk <- stack(facc_hucrast,guagerast)
   facc_hucrast <- overlay(facc_stk,fun=f_mask) #fast
-  facc.ave <- cellStats(facc_hucrast, stat='mean') 
+  facc.ave <- cellStats(facc_hucrast, stat='mean')
   rm(facc_hucrast,facc_stk)
   ## % of area with bareground >75th quantile within USGS GAP macrogroup
   bgm75q_hucrast <- crop(bgm75q,e, progress="text")
@@ -473,7 +472,7 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   elev.ave <- cellStats(elev_hucrast, stat='mean')
   rm(elev_hucrast,elev_stk)
   gc()
-  ## Average annual precipitation 
+  ## Average annual precipitation
   ppt_hucrast <- crop(ppt,e, progress="text")
   ppt_stk <- stack(ppt_hucrast,guagerast)
   ppt_hucrast <- overlay(ppt_stk,fun=f_mask) #fast
@@ -533,8 +532,8 @@ huc_summary_fn <- function(g, hucs, guages_df){ # guages will be list
   rm(rch_hucrast,rch_stk)
   gc()
   ## Pull all the parameters together
-  hucdf <- data.frame(g,cal.load,ag_load,geo_load,sqkm,ec0_10.sqkm,ec10_25.sqkm,ec25_50.sqkm,ec50_75.sqkm,ec75_90.sqkm,ec90_100.sqkm,ec75_100F.sqkm,ec0_75F.sqkm,ec0_75N.sqkm,ec75_100N.sqkm,sprg.load,ec75q.pct,ec50q.pct,ec.ave,ec.max,ec.75q,kw.ave,kw.max,kw.75q,ec90q.pct,kw75q.pct,bg.ave,flen.ave,facc.ave,bgm75q.pct,bgm90q.pct,bgm75q30p.pct,ec75q_kw75q.pct,ec75q_facc75q.pct,ec75q_f500m.pct,ec75q_bgm75q30p.pct,ec75q_bgm75q.pct,ec75q_bgm75q_kw75q.pct,ec75q_bgm75q_facc75q.pct,ec75q_bgm75q_f500m.pct,ec90q_bgm90q40p_kw90q_facc90q_f500m.pct,ec75q_bgm75q30p_kw75q_facc75q_f500m.pct,ec75q_bgm75q_kw75q_facc75q_f500m.pct,ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct,Brock.ave,sar.ave,rock.ave,fs.ave,awc.ave,elev.ave,ppt.ave,pptratio.ave,protind.ave,slp.ave,sness.ave,exc.ave,cwd.ave,mlt.ave,rch.ave)
-  names(hucdf) <- c("guage","cal_tonsyr","ag_load","geo_load","sqkm","ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bg.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
+  hucdf <- data.frame(g,cal.load,cal.load.div,ag_load,geo_load,sqkm,ec0_10.sqkm,ec10_25.sqkm,ec25_50.sqkm,ec50_75.sqkm,ec75_90.sqkm,ec90_100.sqkm,ec75_100F.sqkm,ec0_75F.sqkm,ec0_75N.sqkm,ec75_100N.sqkm,sprg.load,ec75q.pct,ec50q.pct,ec.ave,ec.max,ec.75q,kw.ave,kw.max,kw.75q,ec90q.pct,kw75q.pct,bg.ave,flen.ave,facc.ave,bgm75q.pct,bgm90q.pct,bgm75q30p.pct,ec75q_kw75q.pct,ec75q_facc75q.pct,ec75q_f500m.pct,ec75q_bgm75q30p.pct,ec75q_bgm75q.pct,ec75q_bgm75q_kw75q.pct,ec75q_bgm75q_facc75q.pct,ec75q_bgm75q_f500m.pct,ec90q_bgm90q40p_kw90q_facc90q_f500m.pct,ec75q_bgm75q30p_kw75q_facc75q_f500m.pct,ec75q_bgm75q_kw75q_facc75q_f500m.pct,ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct,Brock.ave,sar.ave,rock.ave,fs.ave,awc.ave,elev.ave,ppt.ave,pptratio.ave,protind.ave,slp.ave,sness.ave,exc.ave,cwd.ave,mlt.ave,rch.ave)
+  names(hucdf) <- c("guage","cal_tonsyr","cal_tonsyr.div","ag_load","geo_load","sqkm","ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bg.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
   gc()
   return(hucdf)
 }
@@ -578,14 +577,15 @@ huc_sum_guage_df$ec0_75N.pct <- huc_sum_guage_df$ec0_75N.sqkm/huc_sum_guage_df$s
 huc_sum_guage_df$ec75_100N.pct <- huc_sum_guage_df$ec75_100N.sqkm/huc_sum_guage_df$sqkm
 huc_sum_guage_df$sprg_load.persqkm <- huc_sum_guage_df$sprg.load/huc_sum_guage_df$sqkm
 huc_sum_guage_df$cal_tonsyrsqkm <- huc_sum_guage_df$cal_tonsyr/huc_sum_guage_df$sqkm
+huc_sum_guage_df$cal_tonsyr.divsqkm <- huc_sum_guage_df$cal_tonsyr.div/huc_sum_guage_df$sqkm
 
 ## Files
-setwd('/home/tnaum/data/BLM_Salinity/DSM_SPARROW')
-write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_WithDiversions_BtwGauge_NASIS.txt", sep = "\t", row.names = FALSE)
+setwd('/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode')
+#write.table(huc_sum_guage_df, "UCRB_guages_DSM_SPARROW_oldKw_WithDiversions_BtwGauge_NASIS.txt", sep = "\t", row.names = FALSE)
 huc_sum_guage_df <- read.delim("UCRB_guages_DSM_SPARROW_oldKw_WithDiversions_BtwGauge_NASIS.txt")
 
 ## Hucs from original network
-allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_2013_newsoils.txt")
+allhuc_sum_df <- read.delim("UCRB_allHUCs_DSM_SPARROW_2013_NASIS.txt")
 ## Merge with huc layer
 hucs_w_covs = merge(hucs,allhuc_sum_df, by="WATERID")
 hucs_w_covs$ec0_10.pct <- hucs_w_covs$ec0_10.sqkm/hucs_w_covs$sqkm
@@ -602,6 +602,7 @@ hucs_w_covs$sprg_load.persqkm <- hucs_w_covs$sprg.load/hucs_w_covs$sqkm
 
 ## Still have some negative values...
 huc_sum_guage_dfc <- subset(huc_sum_guage_df, cal_tonsyr > 0)
+huc_sum_guage_dfd <- subset(huc_sum_guage_df, cal_tonsyr.div > 0)
 
 #### Random Forest Predictions ########################
 varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
@@ -609,14 +610,14 @@ varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90
 #varlist <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 formulaStringRF_adj_load <- as.formula(paste('log(cal_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
 adj_load_rf <- randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, nodesize=1) 
-adj_load_rf # Rsq = 64.07%, 3/28/2019
+adj_load_rf # Rsq = 66.55%, 4/9/2019 with diversions; Without diversions: rsq = 66.37
 varImpPlot(adj_load_rf)
-setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
-saveRDS(adj_load_rf,"BtwGauge_adj_load_RF_NASIS.rds")
+# setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
+# saveRDS(adj_load_rf,"BtwGauge_adj_load_RF_NASIS.rds")
 ## Check prediction of UCRB total load
 allHucloadslog <- unname(predict(adj_load_rf, newdata=hucs_w_covs))
 allHucloads <- exp(as.numeric(allHucloadslog))
-UCRBload <- sum(allHucloads, na.rm=T) # Record for approach testing
+UCRBload <- sum(allHucloads, na.rm=T) # Record for approach testing: div: 21.7 mill, non-diversion: 19.89 mill 
 
 
 
@@ -626,14 +627,14 @@ UCRBload <- sum(allHucloads, na.rm=T) # Record for approach testing
 varlist_yield <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg_load.persqkm","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 # Modified list
 #varlist_yield <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.max","ec.75q","kw.ave","kw.max","kw.75q","ec90q.pct","kw75q.pct","bgm.ave","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec50q_bgm75q_kw75q_facc75q_f500m.pct","edskg648.ave","edskg648abs.ave","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
-formulaStringRF_adj_yield <- as.formula(paste('log(cal_tonsyrsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
-adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE)
-adj_yield_rf # Rsq = 22.11%, 3/28/2019
-varImpPlot(adj_yield_rf)
-partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave) ## Check pi plot for most influential variable(s)
-saveRDS(adj_yield_rf,"BtwGauge_adj_yield_RF_NASIS.rds")
+formulaStringRF_adj_yield <- as.formula(paste('log(cal_tonsyr.divsqkm) ~', paste(varlist_yield, collapse="+")))# put in dep variable name
+adj_yield_rf <- randomForest(formulaStringRF_adj_yield, data = huc_sum_guage_dfd, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE)
+adj_yield_rf # Rsq = 24.19%, with diversions; w/o diversions: rsq = 24.23
+#varImpPlot(adj_yield_rf)
+#partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave) ## Check pi plot for most influential variable(s)
+#saveRDS(adj_yield_rf,"BtwGauge_adj_yield_RF_NASIS.rds")
 ## Check prediction of UCRB total load
 hucs_w_covs$adj_yield_rf_log <- unname(predict(adj_yield_rf, newdata=hucs_w_covs))
 hucs_w_covs$adj_yield_rf_yield <- exp(hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs$adj_yield_rf_load <- hucs_w_covs$adj_yield_rf_yield*hucs_w_covs$sqkm
-UCRBload <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T) # Record for approach testing
+UCRBload <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T) # w/diversions = 6.04 mill;  w/o diversion = 5.78 mill

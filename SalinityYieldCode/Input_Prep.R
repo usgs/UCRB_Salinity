@@ -24,86 +24,13 @@ ecm_fn <- function(ec0, ec30,ec60,ec100) { ind <- ec0 + ec30 + ec60 + ec100
 return(ind)
 }
 ecm_stk <-stack(ec0, ec30, ec60, ec100)
-ecm <- clusterR(ecm_stk, overlay, args=list(fun=ecm_fn), progress='text', filename="ecave_mask.tif")
-#ecm <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ecave_mask.tif") # to load if restarting
+ec <- clusterR(ecm_stk, overlay, args=list(fun=ecm_fn), progress='text', filename="ecave_mask.tif")
+ec <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ecave_mask.tif") # to load if restarting
 mask <- raster("/home/tnaum/data/BLM_Salinity/water_mask/NLCD_water_mask.tif")
 
 ##### UCRB extent
 ucrb_bnd <- readOGR("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/Huc6_boundary", "CO_River_watershed_Meade", stringsAsFactors = F)
 
-##### Agricultural lands Sources
-agland <- readOGR("/home/tnaum/data/BLM_Salinity/SPARROW/data/UCRB_Ag_Buto/sir2014_5039_UCRBAgriculture_v2.gdb", stringsAsFactors = F)
-agland$IrrigClass <- paste(agland$UCRB_irrigation_status,agland$UCRB_irrigation_method,sep="-")
-agIrrLand <- agland[agland$UCRB_irrigation_status=="Irrigated",]
-agIrrLand$IrrigClassID <- ifelse(agIrrLand$IrrigClass == "Irrigated-Flood", 1, 2)## 1s are flooded, 2s are other types of irrigation
-agIrrLandrast <- rasterize(agIrrLand, ecm,  field=agIrrLand$IrrigClassID, progress="text", datatype='INT1U', filename="/home/tnaum/data/BLM_Salinity/DSM_SPARROW/intermed_layers/IrrigAgrast.tif") # slow but steady
-agIrrLandrast <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/intermed_layers/IrrigAgrast.tif") # To open in future runs
-
-###### Land Source files: EC and agriculture combinations
-# Highest (>90th quantile) EC non-irrigated
-ec90_100s_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm>unname(quantile(ecm, probs=0.90,na.rm=T))&agIrrLandrast==0,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec90_100s_stk <-stack(ecm, agIrrLandrast)
-ec90_100s <- clusterR(ec90_100s_stk, overlay, args=list(fun=ec90_100s_fn), progress='text', datatype='INT1U', filename="ec90_100s.tif")
-# 75-90th quantile EC non-irrigated
-ec75_90s_fn <- function(ecm, agIrrLandrast,ec90_100s) { ind <- ifelse(ecm>unname(quantile(ecm, probs=0.75,na.rm=T))&agIrrLandrast==0&ec90_100s==0,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec75_90s_stk <-stack(ecm, agIrrLandrast,ec90_100s)
-ec75_90s <- clusterR(ec75_90s_stk, overlay, args=list(fun=ec75_90s_fn), progress='text', datatype='INT1U', filename="ec75_90s.tif")
-# 50-75th quantile EC non-irrigated
-ec50_75s_fn <- function(ecm, agIrrLandrast,ec90_100s,ec75_90s) { ind <- ifelse(ecm>unname(quantile(ecm, probs=0.50,na.rm=T))&agIrrLandrast==0&ec90_100s==0&ec75_90s==0,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec50_75s_stk <-stack(ecm, agIrrLandrast,ec90_100s,ec75_90s)
-ec50_75s <- clusterR(ec50_75s_stk, overlay, args=list(fun=ec50_75s_fn), progress='text', datatype='INT1U', filename="ec50_75s.tif")
-# <10th quantile EC non-irrigated
-ec0_10s_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm<unname(quantile(ecm, probs=0.10,na.rm=T))&agIrrLandrast==0,1,0) 
-return(ind)
-}
-ec0_10s_stk <-stack(ecm, agIrrLandrast)
-ec0_10s <- clusterR(ec0_10s_stk, overlay, args=list(fun=ec0_10s_fn), progress='text', datatype='INT1U', filename="ec0_10s.tif")
-# 10-25th quantile EC non-irrigated
-ec10_25s_fn <- function(ecm, agIrrLandrast, ec0_10s) { ind <- ifelse(ecm<unname(quantile(ecm, probs=0.25,na.rm=T))&agIrrLandrast==0&ec0_10s==0,1,0) 
-return(ind)
-}
-ec10_25s_stk <-stack(ecm, agIrrLandrast,ec0_10s)
-ec10_25s <- clusterR(ec10_25s_stk, overlay, args=list(fun=ec10_25s_fn), progress='text', datatype='INT1U', filename="ec10_25s.tif")
-# 25-50th quantile EC non-irrigated
-ec25_50s_fn <- function(ecm, agIrrLandrast, ec0_10s, ec10_25s) { ind <- ifelse(ecm<unname(quantile(ecm, probs=0.50,na.rm=T))&agIrrLandrast==0&ec0_10s==0&ec10_25s==0,1,0) 
-return(ind)
-}
-ec25_50s_stk <-stack(ecm, agIrrLandrast,ec0_10s, ec10_25s)
-ec25_50s <- clusterR(ec25_50s_stk, overlay, args=list(fun=ec25_50s_fn), progress='text', datatype='INT1U', filename="ec25_50s.tif")
-
-# Lower EC flood irrigated ag
-ec0_75sF_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm<unname(quantile(ecm, probs=0.75,na.rm=T))&agIrrLandrast==1,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec0_75sF_stk <-stack(ecm, agIrrLandrast)
-ec0_75sF <- clusterR(ec0_75sF_stk, overlay, args=list(fun=ec0_75sF_fn),progress='text', datatype='INT1U', filename="ec0_75sF.tif")
-# High EC flood irrigated ag
-ec75_100sF_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm>unname(quantile(ecm, probs=0.75,na.rm=T))&agIrrLandrast==1,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec75_100sF_stk <-stack(ecm, agIrrLandrast)
-ec75_100sF <- clusterR(ec75_100sF_stk, overlay, args=list(fun=ec75_100sF_fn),progress='text', datatype='INT1U', filename="ec75_100sF.tif")
-# Low EC Non-flood irrigated ag
-ec0_75sN_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm<unname(quantile(ecm, probs=0.75,na.rm=T))&agIrrLandrast==2,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec0_75sN_stk <-stack(ecm, agIrrLandrast)
-ec0_75sN <- clusterR(ec0_75sN_stk, overlay, args=list(fun=ec0_75sN_fn),progress='text', datatype='INT1U', filename="ec0_75sN.tif")
-# High EC Non-flood irrigated ag
-ec75_100sN_fn <- function(ecm, agIrrLandrast) { ind <- ifelse(ecm>unname(quantile(ecm, probs=0.75,na.rm=T))&agIrrLandrast==2,1,0) #EC50q ~ 0.35 dS/m
-return(ind)
-}
-ec75_100sN_stk <-stack(ecm, agIrrLandrast)
-ec75_100sN <- clusterR(ec75_100sN_stk, overlay, args=list(fun=ec75_100sN_fn),progress='text', datatype='INT1U', filename="ec75_100sN.tif")
-
-endCluster()
-gc()
 
 ##### Point Sources: turn to raster for summation in guage summary function
 pts <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/UCRB_Spring_Locations_edited.txt") # If in delimited file other than csv
@@ -199,59 +126,168 @@ clusterR(rechc_stk, overlay, args=list(fun=f_mask),progress='text', datatype='FL
 endCluster()
 
 ###############################################
-#### Erosion risk index creation using various rasters and using quantile breaks to 
+#### Source and erosion risk index raster creation using various rasters and using quantile breaks to 
 #### identify areas at high risk of contributing salts to 
 #### washes in the UCRB
 
-## Load packages
-required.packages <- c("raster", "sp", "rgdal","snow", "snowfall","parallel", "itertools","doParallel")# might need snowfall
-new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
-lapply(required.packages, require, character.only=T)
-rm(required.packages, new.packages)
-## Increase actuve memory useable by raster package
-#memory.limit(500000)
-rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 
 ## Rasters to use
 bg <- raster("/home/tnaum/data/BLM_Salinity/Landsat8_2013_07_01_10_30/bareground_2013/bg_ls8_2013_07_01_10_30alb.tif")
 mask <- raster("/home/tnaum/data/BLM_Salinity/water_mask/NLCD_water_mask.tif")
 gap <- raster("/home/tnaum/data/UCRB_Covariates/GAP.tif")
 ec <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/ecave_mask.tif")
+names(ec) <- 'ec'
 kwc <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs/kw_m.tif")
+names(kwc) <- 'kwc'
 flen <- raster("/home/tnaum/data/BLM_Salinity/risk_index/flength_mask.tif")
+names(flen) <- 'flen'
 facc<- raster("/home/tnaum/data/BLM_Salinity/risk_index/CAlog10_mask.tif")
+names(facc) <- 'facc'
 ## Gap lookup table
 gap_lup <- read.csv("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/GAP_analysis/Class_lookup_UCRB.csv")
 
-## Set working Drive
-setwd("/home/tnaum/data/BLM_Salinity/risk_index")
+## Parallelized computation of quantile values needed for raster creation functions
+rlist <- c(ec,ec,ec,ec,ec,kwc,kwc,kwc,facc,facc,facc)
+qlist <- c('.10','.25','.50','.75','.90','.50','.75','.90','.50','.75','.90')
+ilist <- c(1:(length(qlist)))
+#function
+quan_fn <- function(i){ # export rlist and qlist
+  qstatnm <- paste(names(rlist[[i]]),qlist[i],sep="")
+  qstat <- unname(quantile(rlist[[i]], probs=as.numeric(qlist[i]),na.rm=T))
+  qdf <- data.frame(qstatnm,qstat)
+  names(qdf) <- c("qstatnm","qstat")
+  gc()
+  return(qdf)
+}
+
+## Setup up parallel list apply for quantile calculations
+rasterOptions(maxmemory = 1e+07, chunksize = 1e+06)
+snowfall::sfInit(parallel=TRUE, cpus=5) # RAM intensive, could probably run 6 or 7 cpus for the 11 jobs I ran...
+snowfall::sfExport("ilist","qlist", "quan_fn","rlist")
+snowfall::sfLibrary(plyr)
+snowfall::sfLibrary(raster)
+Sys.time()
+q_sum <- snowfall::sfLapply(ilist, function(i){try(quan_fn(i))})
+Sys.time()
+snowfall::sfStop()
+q_sum_df <- data.frame(q_sum[[1]], stringsAsFactors = F) ## must be data.frame
+q_sum_df <- q_sum_df[FALSE,]
+q_sum_df$qstatnm <- as.character(q_sum_df$qstatnm)
+for(i in seq(1:length(q_sum))){
+  newrow <- q_sum[[i]]
+  newrow$qstatnm <- as.character(newrow$qstatnm)
+  if(class(newrow)=="data.frame"){
+    q_sum_df <- rbind(q_sum_df, newrow)
+  }
+  print(paste("Done with ", i, sep=""))
+}
+## Save quantile table
+setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
+#write.table(q_sum_df, "raster_quantiles.txt", sep = "\t", row.names = FALSE)
+q_sum_df <- read.delim("raster_quantiles.txt")
+
+##### Agricultural lands Sources
+agland <- readOGR("/home/tnaum/data/BLM_Salinity/SPARROW/data/UCRB_Ag_Buto/sir2014_5039_UCRBAgriculture_v2.gdb", stringsAsFactors = F)
+agland$IrrigClass <- paste(agland$UCRB_irrigation_status,agland$UCRB_irrigation_method,sep="-")
+agIrrLand <- agland[agland$UCRB_irrigation_status=="Irrigated",]
+agIrrLand$IrrigClassID <- ifelse(agIrrLand$IrrigClass == "Irrigated-Flood", 1, 2)## 1s are flooded, 2s are other types of irrigation
+agIrrLandrast <- rasterize(agIrrLand, ecm,  field=agIrrLand$IrrigClassID, progress="text", datatype='INT1U', filename="/home/tnaum/data/BLM_Salinity/DSM_SPARROW/intermed_layers/IrrigAgrast.tif") # slow but steady
+agIrrLandrast <- raster("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/intermed_layers/IrrigAgrast.tif") # To open in future runs
 
 ## Load up cluster for processing
+rasterOptions(maxmemory = 1e+09, chunksize = 1e+08)
 cpus <- detectCores(logical=TRUE)-2
 beginCluster(cpus,type='SOCK')
 
+###### Land Source files: EC and agriculture combinations
+setwd("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/inputs")
+# Highest (>90th quantile) EC non-irrigated
+ec90_100s_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=="ec.90",]$qstat&agIrrLandrast==0,1,0) 
+return(ind)
+}
+ec90_100s_stk <-stack(ec, agIrrLandrast)
+ec90_100s <- clusterR(ec90_100s_stk, overlay, args=list(fun=ec90_100s_fn), progress='text', datatype='INT1U', filename="ec90_100s.tif",export='q_sum_df')
+# 75-90th quantile EC non-irrigated
+ec75_90s_fn <- function(ec, agIrrLandrast,ec90_100s) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat&agIrrLandrast==0&ec90_100s==0,1,0) 
+return(ind)
+}
+ec75_90s_stk <-stack(ec, agIrrLandrast,ec90_100s)
+ec75_90s <- clusterR(ec75_90s_stk, overlay, args=list(fun=ec75_90s_fn), progress='text', datatype='INT1U', filename="ec75_90s.tif",export='q_sum_df')
+# 50-75th quantile EC non-irrigated
+ec50_75s_fn <- function(ec, agIrrLandrast,ec90_100s,ec75_90s) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.50',]$qstat&agIrrLandrast==0&ec90_100s==0&ec75_90s==0,1,0) 
+return(ind)
+}
+ec50_75s_stk <-stack(ec, agIrrLandrast,ec90_100s,ec75_90s)
+ec50_75s <- clusterR(ec50_75s_stk, overlay, args=list(fun=ec50_75s_fn), progress='text', datatype='INT1U', filename="ec50_75s.tif",export='q_sum_df')
+# <10th quantile EC non-irrigated
+ec0_10s_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec<q_sum_df[q_sum_df$qstatnm=='ec.10',]$qstat&agIrrLandrast==0,1,0) 
+return(ind)
+}
+ec0_10s_stk <-stack(ec, agIrrLandrast)
+ec0_10s <- clusterR(ec0_10s_stk, overlay, args=list(fun=ec0_10s_fn), progress='text', datatype='INT1U', filename="ec0_10s.tif",export='q_sum_df')
+# 10-25th quantile EC non-irrigated
+ec10_25s_fn <- function(ec, agIrrLandrast, ec0_10s) { ind <- ifelse(ec<q_sum_df[q_sum_df$qstatnm=='ec.25',]$qstat&agIrrLandrast==0&ec0_10s==0,1,0) 
+return(ind)
+}
+ec10_25s_stk <-stack(ec, agIrrLandrast,ec0_10s)
+ec10_25s <- clusterR(ec10_25s_stk, overlay, args=list(fun=ec10_25s_fn), progress='text', datatype='INT1U', filename="ec10_25s.tif",export='q_sum_df')
+# 25-50th quantile EC non-irrigated
+ec25_50s_fn <- function(ec, agIrrLandrast, ec0_10s, ec10_25s) { ind <- ifelse(ec<q_sum_df[q_sum_df$qstatnm=='ec.50',]$qstat&agIrrLandrast==0&ec0_10s==0&ec10_25s==0,1,0) 
+return(ind)
+}
+ec25_50s_stk <-stack(ec, agIrrLandrast,ec0_10s, ec10_25s)
+ec25_50s <- clusterR(ec25_50s_stk, overlay, args=list(fun=ec25_50s_fn), progress='text', datatype='INT1U', filename="ec25_50s.tif",export='q_sum_df')
+
+# Lower EC flood irrigated ag
+ec0_75sF_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec<q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat&agIrrLandrast==1,1,0) 
+return(ind)
+}
+ec0_75sF_stk <-stack(ec, agIrrLandrast)
+ec0_75sF <- clusterR(ec0_75sF_stk, overlay, args=list(fun=ec0_75sF_fn),progress='text', datatype='INT1U', filename="ec0_75sF.tif",export='q_sum_df')
+
+# High EC flood irrigated ag
+ec75_100sF_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat&agIrrLandrast==1,1,0) 
+return(ind)
+}
+ec75_100sF_stk <-stack(ec, agIrrLandrast)
+ec75_100sF <- clusterR(ec75_100sF_stk, overlay, args=list(fun=ec75_100sF_fn),progress='text', datatype='INT1U', filename="ec75_100sF.tif",export='q_sum_df')
+# Low EC Non-flood irrigated ag
+ec0_75sN_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec<q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat&agIrrLandrast==2,1,0) 
+return(ind)
+}
+ec0_75sN_stk <-stack(ec, agIrrLandrast)
+ec0_75sN <- clusterR(ec0_75sN_stk, overlay, args=list(fun=ec0_75sN_fn),progress='text', datatype='INT1U', filename="ec0_75sN.tif",export='q_sum_df')
+# High EC Non-flood irrigated ag
+ec75_100sN_fn <- function(ec, agIrrLandrast) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat&agIrrLandrast==2,1,0) 
+return(ind)
+}
+ec75_100sN_stk <-stack(ec, agIrrLandrast)
+ec75_100sN <- clusterR(ec75_100sN_stk, overlay, args=list(fun=ec75_100sN_fn),progress='text', datatype='INT1U', filename="ec75_100sN.tif",export='q_sum_df')
+
+## Set working Drive for risk rasters
+setwd("/home/tnaum/data/BLM_Salinity/risk_index")
+
 ## Make ec and kw quantile base index dummy rasters
 # Areas with EC >75 %tile
-ec75q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.75,na.rm=T)),1,0)
+ec75q_fn <- function(ec) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.75',]$qstat,1,0)
 return(ind)
 }
-ec75q <- clusterR(ec, calc, args=list(fun=ec75q_fn),progress='text', datatype='INT1U', filename="srisk_ec75q.tif")
+ec75q <- clusterR(ec, calc, args=list(fun=ec75q_fn),progress='text', datatype='INT1U', filename="srisk_ec75q.tif",export='q_sum_df')
 # Areas with EC >50 %tile
-ec50q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.50,na.rm=T)),1,0)
+ec50q_fn <- function(ec) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.50',]$qstat,1,0)
 return(ind)
 }
-ec50q <- clusterR(ec, calc, args=list(fun=ec50q_fn),progress='text', datatype='INT1U', filename="srisk_ec50q.tif")
+ec50q <- clusterR(ec, calc, args=list(fun=ec50q_fn),progress='text', datatype='INT1U', filename="srisk_ec50q.tif",export='q_sum_df')
 # Areas with EC >90 %tile
-ec90q_fn <- function(ec) { ind <- ifelse(ec>unname(quantile(ec, probs=0.90,na.rm=T)),1,0)
+ec90q_fn <- function(ec) { ind <- ifelse(ec>q_sum_df[q_sum_df$qstatnm=='ec.90',]$qstat,1,0)
 return(ind)
 }
-ec90q <- clusterR(ec, calc, args=list(fun=ec90q_fn),progress='text', datatype='INT1U', filename="srisk_ec90q.tif")
+ec90q <- clusterR(ec, calc, args=list(fun=ec90q_fn),progress='text', datatype='INT1U', filename="srisk_ec90q.tif",export='q_sum_df')
 # Areas with kw >75 %tile
-kw75q_fn <- function(kwc) { ind <- ifelse(kwc>unname(quantile(kwc, probs=0.75,na.rm=T)),1,0)
+kw75q_fn <- function(kwc) { ind <- ifelse(kwc>q_sum_df[q_sum_df$qstatnm=='kwc.75',]$qstat,1,0)
 return(ind)
 }
-kw75q <- clusterR(kwc, calc, args=list(fun=kw75q_fn),progress='text', datatype='INT1U', filename="srisk_kw75q.tif")
+kw75q <- clusterR(kwc, calc, args=list(fun=kw75q_fn),progress='text', datatype='INT1U', filename="srisk_kw75q.tif",export='q_sum_df')
 
 ## GAP reclass to Macrogroup
 gap_macro_mat <- as.matrix(gap_lup[c("Value","macroval")], dimnames = NULL)
@@ -311,11 +347,12 @@ fn_class90quan <- function(a,bcls) {
 a <- raster("empty.tif")
 b <- raster("bareground_mask.tif")
 c <- raster("gap_macrogroup.tif")
-for(i in gaplist){
+for(i in gaplist){ # Right now this loop works, but leaves behind tmp .gri files that fill up HDs fast. 
+  # Have to delete tmp files. 
   b_stk <- stack(b,c)
   bcls <- clusterR(b_stk, overlay, args=list(fun=bcls_fn), export='i', progress='text')
   a_stk <- stack(a,bcls)
-  a <- clusterR(a_stk, overlay, args=list(fun=fn_class90quan), progress='text')
+  a <- overlay(a_stk, fun=fn_class90quan, progress='text')
   rm(bcls)
   gc()
   print(i)
@@ -340,7 +377,7 @@ for(i in gaplist){
   b_stk <- stack(b,c)
   bcls <- clusterR(b_stk, overlay, args=list(fun=bcls_fn), export='i', progress='text')
   a_stk <- stack(a,bcls)
-  a <- clusterR(a_stk, overlay, args=list(fun=fn_class75quan), progress='text')
+  a <- overlay(a_stk, fun=fn_class75quan, progress='text')
   rm(bcls)
   gc()
   print(i)
@@ -356,38 +393,38 @@ bgm <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bareground_mask.tif")
 bgmacro75d <- raster("/home/tnaum/data/BLM_Salinity/risk_index/bgmacro75.tif")
 ## Most conservative index
 srisk_b90m40p_facc90q_ec90q_kw90q_f500m_fn <- function(bgm,bgmacro90d,ec90q,flen,facc,kwc) {
-  ind <- ifelse((bgm>40|bgmacro90d==1)&ec90q==1&flen<500&facc>unname(quantile(facc, probs=0.9,na.rm=T))&kwc>unname(quantile(kwc, probs=0.9,na.rm=T)),1,NA)
-  return(ind) # q90 Ksw is 0.0355, q90 of facc is 4804
+  ind <- ifelse((bgm>40|bgmacro90d==1)&ec90q==1&flen<500&facc>q_sum_df[q_sum_df$qstatnm=='facc.90',]$qstat&kwc>q_sum_df[q_sum_df$qstatnm=='kwc.90',]$qstat,1,NA)
+  return(ind) 
 }
 b90m40p_facc90q_ec90q_kw90q_f500m_stk <-stack(bgm,bgmacro90d,ec90q,flen,facc,kwc)
-srisk_b90m40p_facc90q_ec90q_kw90q_f500m <- clusterR(b90m40p_facc90q_ec90q_kw90q_f500m_stk, overlay, args=list(fun=srisk_b90m40p_facc90q_ec90q_kw90q_f500m_fn),progress='text',filename="srisk_ec90q_b90m40p_kw90q_facc90q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_b90m40p_facc90q_ec90q_kw90q_f500m <- clusterR(b90m40p_facc90q_ec90q_kw90q_f500m_stk, overlay, args=list(fun=srisk_b90m40p_facc90q_ec90q_kw90q_f500m_fn),progress='text',filename="srisk_ec90q_b90m40p_kw90q_facc90q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Bareground 75q or 30%
 srisk_b75m30p_fn <- function(bgm,bgmacro75d) {
   ind <- ifelse((bgm>30|bgmacro75d==1),1,NA)
-  return(ind) # q90 Ksw is 0.0355, q90 of facc is 4804
+  return(ind) 
 }
 b75m30p_stk <-stack(bgm,bgmacro75d)
-srisk_b75m30p <- clusterR(b75m30p_stk, overlay, args=list(fun=srisk_b75m30p_fn),progress='text',filename="srisk_bgm75q30p.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_b75m30p <- clusterR(b75m30p_stk, overlay, args=list(fun=srisk_b75m30p_fn),progress='text',filename="srisk_bgm75q30p.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q Bareground 75q or 30%
 srisk_ec75q_b75m30p_fn <- function(bgm,bgmacro75d,ec75q) {
   ind <- ifelse((bgm>30|bgmacro75d==1)&ec75q==1,1,NA)
-  return(ind) # q90 Ksw is 0.0355, q90 of facc is 4804
+  return(ind) 
 }
 ec75q_b75m30p_stk <-stack(bgm,bgmacro75d,ec75q)
-srisk_ec75q_b75m30p <- clusterR(ec75q_b75m30p_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_fn),progress='text',filename="srisk_ec75q_b75m30p.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_b75m30p <- clusterR(ec75q_b75m30p_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_fn),progress='text',filename="srisk_ec75q_b75m30p.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q Bareground 75q
 srisk_ec75q_bgm75q_fn <- function(bgmacro75d,ec75q) {
   ind <- ifelse(bgmacro75d==1&ec75q==1,1,NA)
-  return(ind) # q90 Ksw is 0.0355, q90 of facc is 4804
+  return(ind) 
 }
 ec75q_bgm75q_stk <-stack(bgmacro75d,ec75q)
-srisk_ec75q_bgm75q <- clusterR(ec75q_bgm75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_fn),progress='text',filename="srisk_ec75q_bgm75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q <- clusterR(ec75q_bgm75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_fn),progress='text',filename="srisk_ec75q_bgm75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q Bareground 75q, kw > 75th quan
@@ -396,16 +433,16 @@ srisk_ec75q_bgm75q_kw75q_fn <- function(bgmacro75d,ec75q,kw75q) {
   return(ind) 
 }
 ec75q_bgm75q_kw75q_stk <-stack(bgmacro75d,ec75q,kw75q)
-srisk_ec75q_bgm75q_kw75q <- clusterR(ec75q_bgm75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_kw75q_fn),progress='text',filename="srisk_ec75q_bgm75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q_kw75q <- clusterR(ec75q_bgm75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_kw75q_fn),progress='text',filename="srisk_ec75q_bgm75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q Bareground 75q, facc > 75th quan
 srisk_ec75q_bgm75q_facc75q_fn <- function(bgmacro75d,ec75q,facc) {
-  ind <- ifelse(bgmacro75d==1&ec75q==1&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse(bgmacro75d==1&ec75q==1&facc>q_sum_df[q_sum_df$qstatnm=='facc.75',]$qstat,1,NA)
   return(ind) 
 }
 ec75q_bgm75q_facc75q_stk <-stack(bgmacro75d,ec75q,facc)
-srisk_ec75q_bgm75q_facc75q <- clusterR(ec75q_bgm75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_facc75q_fn),progress='text',filename="srisk_ec75q_bgm75q_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q_facc75q <- clusterR(ec75q_bgm75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_facc75q_fn),progress='text',filename="srisk_ec75q_bgm75q_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q Bareground 75q, flen < 500m
@@ -414,34 +451,34 @@ srisk_ec75q_bgm75q_f500m_fn <- function(bgmacro75d,ec75q,flen) {
   return(ind) 
 }
 ec75q_bgm75q_f500m_stk <-stack(bgmacro75d,ec75q,flen)
-srisk_ec75q_bgm75q_f500m <- clusterR(ec75q_bgm75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q_f500m <- clusterR(ec75q_bgm75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Moderate complete index
 srisk_ec75q_bgm75q_kw75q_facc75q_f500m_fn <- function(bgm,bgmacro75d,ec75q,kw75q,facc,flen) {
-  ind <- ifelse(bgmacro75d==1&ec75q==1&kw75q==1&flen<500&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse(bgmacro75d==1&ec75q==1&kw75q==1&flen<500&facc>q_sum_df[q_sum_df$qstatnm=='facc.75',]$qstat,1,NA)
   return(ind) 
 }
 ec75q_bgm75q_kw75q_facc75q_f500m_stk <-stack(bgm,bgmacro75d,ec75q,kw75q,facc,flen)
-srisk_ec75q_bgm75q_kw75q_facc75q_f500m<- clusterR(ec75q_bgm75q_kw75q_facc75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_kw75q_facc75q_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q_kw75q_facc75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q_kw75q_facc75q_f500m<- clusterR(ec75q_bgm75q_kw75q_facc75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q_kw75q_facc75q_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q_kw75q_facc75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Moderate complete index with more liberal bare ground inclusion (30%)
 srisk_ec75q_b75m30p_kw75q_facc75q_f500m_fn <- function(bgm,bgmacro75d,ec75q,kw75q,facc,flen) {
-  ind <- ifelse((bgm>30|bgmacro75d==1)&ec75q==1&kw75q==1&flen<500&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse((bgm>30|bgmacro75d==1)&ec75q==1&kw75q==1&flen<500&facc>q_sum_df[q_sum_df$qstatnm=='facc.75',]$qstat,1,NA)
   return(ind) 
 }
 ec75q_b75m30p_kw75q_facc75q_f500m_stk <-stack(bgm,bgmacro75d,ec75q,kw75q,facc,flen)
-srisk_ec75q_b75m30p_kw75q_facc75q_f500m <- clusterR(ec75q_b75m30p_kw75q_facc75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_kw75q_facc75q_f500m_fn),progress='text',filename="srisk_ec75q_b75m30p_kw75q_facc75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_b75m30p_kw75q_facc75q_f500m <- clusterR(ec75q_b75m30p_kw75q_facc75q_f500m_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_kw75q_facc75q_f500m_fn),progress='text',filename="srisk_ec75q_b75m30p_kw75q_facc75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Liberal complete index
 srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m_fn <- function(bgm,bgmacro75d,ec50q,kwc,facc,flen) {
-  ind <- ifelse((bgm>30|bgmacro75d==1)&ec50q==1&kwc>unname(quantile(kwc, probs=0.50,na.rm=T))&flen<1000&facc>unname(quantile(facc, probs=0.50,na.rm=T)),1,NA)
+  ind <- ifelse((bgm>30|bgmacro75d==1)&ec50q==1&kwc>q_sum_df[q_sum_df$qstatnm=='kwc.50',]$qstat&flen<1000&facc>q_sum_df[q_sum_df$qstatnm=='facc.50',]$qstat,1,NA)
   return(ind) 
 }
 ec50q_bgm75q30p_kw50q_facc50q_f1000m_stk <-stack(bgm,bgmacro75d,ec50q,kwc,facc,flen)
-srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m <- clusterR(ec50q_bgm75q30p_kw50q_facc50q_f1000m_stk, overlay, args=list(fun=srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m_fn),progress='text',filename="srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m <- clusterR(ec50q_bgm75q30p_kw50q_facc50q_f1000m_stk, overlay, args=list(fun=srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m_fn),progress='text',filename="srisk_ec50q_bgm75q30p_kw50q_facc50q_f1000m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Moderate index without hydro terms
@@ -450,16 +487,16 @@ srisk_ec75q_b75m30p_kw75q_fn <- function(bgm,bgmacro75d,ec75q,kw75q) {
   return(ind) 
 }
 ec75q_b75m30p_kw75q_stk <-stack(bgm,bgmacro75d,ec75q,kw75q)
-srisk_ec75q_b75m30p_kw75q <- clusterR(ec75q_b75m30p_kw75q_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_kw75q_fn),progress='text',filename="srisk_ec75q_b75m30p_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_b75m30p_kw75q <- clusterR(ec75q_b75m30p_kw75q_stk, overlay, args=list(fun=srisk_ec75q_b75m30p_kw75q_fn),progress='text',filename="srisk_ec75q_b75m30p_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Moderate index with flow accum >75th perc and no erodibility
 srisk_ec75q_bgm75q30p_facc75q_fn <- function(bgm,bgmacro75d,ec75q,facc) {
-  ind <- ifelse((bgm>30|bgmacro75d==1)&ec75q==1&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse((bgm>30|bgmacro75d==1)&ec75q==1&facc>q_sum_df[q_sum_df$qstatnm=='facc.75',]$qstat,1,NA)
   return(ind) 
 }
 ec75q_bgm75q30p_facc75q_stk <-stack(bgm,bgmacro75d,ec75q,facc)
-srisk_ec75q_bgm75q30p_facc75q <- clusterR(ec75q_bgm75q30p_facc75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q30p_facc75q_fn),progress='text',filename="srisk_ec75q_bgm75q30p_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q30p_facc75q <- clusterR(ec75q_bgm75q30p_facc75q_stk, overlay, args=list(fun=srisk_ec75q_bgm75q30p_facc75q_fn),progress='text',filename="srisk_ec75q_bgm75q30p_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## Moderate index with flow length < 500m and no erodibility
@@ -468,7 +505,7 @@ srisk_ec75q_bgm75q30p_f500m_fn <- function(bgm,bgmacro75d,ec75q,flen) {
   return(ind) 
 }
 ec75q_bgm75q30p_f500m_stk <-stack(bgm,bgmacro75d,ec75q,flen)
-srisk_ec75q_bgm75q30p_f500m <- clusterR(ec75q_bgm75q30p_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q30p_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q30p_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_bgm75q30p_f500m <- clusterR(ec75q_bgm75q30p_f500m_stk, overlay, args=list(fun=srisk_ec75q_bgm75q30p_f500m_fn),progress='text',filename="srisk_ec75q_bgm75q30p_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 ## EC75q  kw > 75th quan
@@ -477,28 +514,28 @@ srisk_ec75q_kw75q_fn <- function(ec75q,kw75q) {
   return(ind) 
 }
 srisk_ec75q_kw75q_stk <-stack(ec75q,kw75q)
-srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 ## EC75q  facc > 75th quan
 srisk_ec75q_facc75q_fn <- function(ec75q,facc) {
-  ind <- ifelse(ec75q==1&facc>unname(quantile(facc, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse(ec75q==1&facc>q_sum_df[q_sum_df$qstatnm=='facc.75',]$qstat,1,NA)
   return(ind) 
 }
 srisk_ec75q_facc75q_stk <-stack(ec75q,facc)
-srisk_ec75q_facc75q <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_facc75q <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_facc75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 ## EC75q,  flen > 75th quan
 srisk_ec75q_f500m_fn <- function(ec75q,flen) {
-  ind <- ifelse(ec75q==1&flen>unname(quantile(flen, probs=0.75,na.rm=T)),1,NA)
+  ind <- ifelse(ec75q==1&flen<500,1,NA)
   return(ind) 
 }
 srisk_ec75q_f500m_stk <-stack(ec75q,flen)
-srisk_ec75q_f500m <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_f500m <- clusterR(srisk_ec75q_facc75q_stk, overlay, args=list(fun=srisk_ec75q_facc75q_fn),progress='text',filename="srisk_ec75q_f500m.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 ## EC75q,  kw > 75th quan
-srisk_ec75q_kw75q_fn <- function(ec,kwc) {
-  ind <- ifelse(ec>unname(quantile(ec, probs=0.75,na.rm=T))&kwc>unname(quantile(kwc, probs=0.75,na.rm=T)),1,NA)
+srisk_ec75q_kw75q_fn <- function(ec75q,kwc) {
+  ind <- ifelse(ec75q==1&kwc>q_sum_df[q_sum_df$qstatnm=='kwc.75',]$qstat,1,NA)
   return(ind) 
 }
-srisk_ec75q_kw75q_stk <-stack(ec,kwc)
-srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U')
+srisk_ec75q_kw75q_stk <-stack(ec75q,kwc)
+srisk_ec75q_kw75q <- clusterR(srisk_ec75q_kw75q_stk, overlay, args=list(fun=srisk_ec75q_kw75q_fn),progress='text',filename="srisk_ec75q_kw75q.tif", options=c("COMPRESS=DEFLATE", "TFW=YES"),datatype='INT1U',export='q_sum_df')
 gc() # Flush out RAM
 
 endCluster()
