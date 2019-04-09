@@ -595,35 +595,35 @@ varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90
 ### RF for load: Log or not?
 formulaStringRF_adj_load <- as.formula(paste('log(div_adj_load_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
 adj_load_rf <- randomForest(formulaStringRF_adj_load, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=200, keep.forest=TRUE, na.rm=T)
-adj_load_rf # summary model with diversion: Rsq = 0.8723; model w/o diversions: Rsq = 
+adj_load_rf # summary model with diversion: Rsq = 0.8723; model w/o diversions: Rsq = 88.42
 varImpPlot(adj_load_rf)
 ## Check prediction of UCRB total load
 allHucloadslog <- unname(predict(adj_load_rf, newdata=hucs_w_covs))
 allHucloads <- exp(as.numeric(allHucloadslog))
-UCRBload.adj_load_rf <- sum(allHucloads, na.rm=T) # 16.2 million tons, huge overestimate; ; model w/o diversions: Rsq =
+UCRBload.adj_load_rf <- sum(allHucloads, na.rm=T) # 16.2 million tons, huge overestimate; ; model w/o diversions: Rsq = 15.8 mill
 ## Plot fit
 plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyr) ~ predict(adj_load_rf, newdata=huc_sum_guage_dfc))
 x1 <-c(0,100,10000,100000000)
 y1 <-c(0,100,10000,100000000)
 lines(x1,y1, col = 'red')#1:1 line
 ## Save model object
-setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
-saveRDS(adj_load_rf,"Fullwatershed_adj_load_RF_NASIS.rds")
+# setwd("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode")
+# saveRDS(adj_load_rf,"Fullwatershed_adj_load_RF_NASIS.rds")
 
 
 ##################### RF for yield ####################
 # Full list
 varlist_yieldc <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg_load.persqkm","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
-formulaStringRF_adj_yieldc <- as.formula(paste('log(adj_mean_ds_tonyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
+formulaStringRF_adj_yieldc <- as.formula(paste('log(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
 adj_yield_rfc <- randomForest(formulaStringRF_adj_yieldc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1) # Run 10x for model framework testing
-adj_yield_rfc ## log OOB 5x for framework testing: 43.42,44.73,43.42,45.32,43.77: ave: 44.132
+adj_yield_rfc ## log OOB 5x for framework testing: 43.42,44.73,43.42,45.32,43.77: ave: 44.132; with diversions: 43.72, 41.79, 42.16, 41.75, 43.4: ave = 42.564
 Imppltc <- varImpPlot(adj_yield_rfc, scale=T)
 # Check UCRB total load prediction
 hucs_w_covs$adj_yield_rf_logtest <- unname(predict(adj_yield_rfc, newdata=hucs_w_covs))
 hucs_w_covs$adj_yield_rf_yield_test <- exp(hucs_w_covs$adj_yield_rf_logtest)
 hucs_w_covs$adj_yield_rf_load_test <- hucs_w_covs$adj_yield_rf_yield_test*hucs_w_covs$sqkm
 UCRBload.yield_rf_test <- sum(hucs_w_covs$adj_yield_rf_load_test, na.rm=T) ## Total UCRB load test, 15 (out of 10879) NAs come up in edge reaches
-UCRBload.yield_rf_test # 5.73,5.67, 5.68,5.60,5.59... 5.76: ave = 
+UCRBload.yield_rf_test # w/o diversions: 5.73,5.67, 5.68,5.60,5.59... Used:5.76; w diversions:  5.72, 5.73, 5.70, 5.75, 5.71
 
 # Prune list visuallly by importance
 varlist_yieldcc <- names(sort(Imppltc[,1], decreasing=T)[0:17]) # chose top variables visually
