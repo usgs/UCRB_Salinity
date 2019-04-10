@@ -804,8 +804,10 @@ for(i in seq(1:length(sa.dw1.dist))){
   print(i)
 }
 sa.wtd<-nb2listw(sa.dw1, style="B",glist=sa.dw1.dist ,zero.policy=NULL)
-geary.test <- geary.test(guage.pts$adj_yield_rf_lm_resid, listw2U(sa.wtd), alternative="two.sided")
-geary.test # C = 0.8814, expected = 1.0, p = 0.008305
+geary.test <- geary.test(guage.pts$adj_yield_rf_lm_resid_m, listw2U(sa.wtd), alternative="two.sided")
+geary.test # C = 0.9082, expected = 1.0, p = 0.1563
+geary.test.cv <- geary.test(guage.pts$adj_yield_rf_cv_lm_diff_m, listw2U(sa.wtd), alternative="two.sided")
+geary.test.cv # C = 0.8980, expected = 1, p = 0.1634 for CV
 
 
 ## Huc predictions
