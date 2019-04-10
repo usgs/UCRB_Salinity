@@ -614,7 +614,7 @@ lines(x1,y1, col = 'red')#1:1 line
 ##################### RF for yield ####################
 # Full list
 varlist_yieldc <- c("ec0_10.pct","ec10_25.pct","ec25_50.pct","ec50_75.pct","ec75_90.pct","ec90_100.pct","ec75_100F.pct","ec0_75F.pct","ec0_75N.pct","ec75_100N.pct","sprg_load.persqkm","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
-formulaStringRF_adj_yieldc <- as.formula(paste('log(div_adj_load_tonsyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
+formulaStringRF_adj_yieldc <- as.formula(paste('log(adj_mean_ds_tonyrsqkm) ~', paste(varlist_yieldc, collapse="+")))# put in dep variable name
 adj_yield_rfc <- randomForest(formulaStringRF_adj_yieldc, data = huc_sum_guage_dfc, importance=TRUE, proximity=FALSE, ntree=500, keep.forest=TRUE,nodesize=1) # Run 10x for model framework testing
 adj_yield_rfc ## log OOB 5x for framework testing: 43.42,44.73,43.42,45.32,43.77: ave: 44.132; with diversions: 43.72, 41.79, 42.16, 41.75, 43.4: ave = 42.564
 Imppltc <- varImpPlot(adj_yield_rfc, scale=T)
@@ -657,7 +657,10 @@ UCRBload.yield_rf_test
 ######################## Assign the chosen model
 formulaStringRF_adj_yield <- formulaStringRF_adj_yieldcc
 adj_yield_rf <- adj_yield_rfcc ## rename pruned model for future steps
+setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures")
+tiff("Model_VarImp_NASIS.tif",width = 6, height = 5, units = 'in', res = 600 )
 Impplt <- varImpPlot(adj_yield_rf)
+dev.off()
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=bgm90q.pct) ## Check pi plot for most influential variable(s)
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave)
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=ec0_75N.pct)
@@ -678,7 +681,7 @@ hucs_w_covs$adj_yield_rf_loglm <- predict(adj_yield_rf_lm, hucs_w_covs) #data.fr
 hucs_w_covs$adj_yield_rf_yield <- exp(hucs_w_covs$adj_yield_rf_loglm)
 hucs_w_covs$adj_yield_rf_load <- hucs_w_covs$adj_yield_rf_yield*hucs_w_covs$sqkm
 UCRBload.yield_rf_lm <- sum(hucs_w_covs$adj_yield_rf_load, na.rm=T)
-UCRBload.yield_rf_lm_metric <- UCRBload.yield_rf_lm*0.90718474 ## metric tons
+UCRBload.yield_rf_lm_metric <- UCRBload.yield_rf_lm*0.90718474 ## metric tons: w/ diverions = 5.336 mill; w/o diversions = 5.367 mill
 #saveRDS(adj_yield_rf, "/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode/FullWatershed_adj_yield_RF_2013_NASIS.rds")
 #saveRDS(adj_yield_rf_lm, "/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode/FullWatershed_adj_yield_RFlm_2013_NASIS.rds")
 adj_yield_rf <- readRDS("/home/tnaum/data/BLM_Salinity/UCRB_Salinity/SalinityYieldCode/FullWatershed_adj_yield_RF_2013_NASIS.rds")
@@ -733,10 +736,10 @@ huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff <- log(huc_sum_guage_dfc$adj_mean_ds_t
 ## Look at residuals and autocorrelation
 huc_sum_guage_dfc$adj_yield_rf_lm_resid <- residuals(adj_yield_rf_lm)
 ## Save dataframe for future use
-saveRDS(huc_sum_guage_dfc,"/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_dataframe_wlmCV_NASIS.rds")
-write.table(huc_sum_guage_dfc, "/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab_NASIS.txt", sep = "\t", row.names = FALSE)
+#saveRDS(huc_sum_guage_dfc,"/home/tnaum/data/BLM_Salinity/DSM_SPARROW/scripts/FullWatershed_adj_yield_RF_2013_dataframe_wlmCV_NASIS.rds")
+#write.table(huc_sum_guage_dfc, "/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab_NASIS.txt", sep = "\t", row.names = FALSE)
 huc_sum_guage_dfc <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guages_yield_rflm_wholewatershed_2013_validated_ttab_NASIS.txt")
-save.image("~/data/BLM_Salinity/DSM_SPARROW/scripts/HUC_integration_streamguage_pourPts_DSM_SPARROW_oldKw_fullwatersheds_2013_NASIS_data_20190405.RData")
+#save.image("~/data/BLM_Salinity/DSM_SPARROW/scripts/HUC_integration_streamguage_pourPts_DSM_SPARROW_oldKw_fullwatersheds_2013_NASIS_data_20190405.RData")
 ## Plots for paper: model fit and cross validation
 setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
 ## Convert to metric
@@ -760,19 +763,19 @@ huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m <- huc_sum_guage_dfc$adj_yield_rf_cv
 ## Set up high res figure
 tiff("FigX_Model_Performance_NASIS.tif",width = 8, height = 5, units = 'in', res = 600 ) 
 par(mfrow=c(2,3),mar=c(5,5,1,2),cex.lab = 1.0)
-plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_logpre_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Predicted Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield log"(Mg ~ yr^{-1} ~ km^{-2})))
+plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_logpre_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Predicted Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Corrected Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield log"(Mg ~ yr^{-1} ~ km^{-2})))
+plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Corrected Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(huc_sum_guage_dfc$adj_yield_rf_lm_resid_m~huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Corrected Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In log units)")
+plot(huc_sum_guage_dfc$adj_yield_rf_lm_resid_m~huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Corrected Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In ln units)")
 x2 <-c(0,100,10000,100000000)
 y2 <-c(0,0,0,0)
 lines(x2,y2, col = 'red')#1:1 line
-plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ log(exp(predict(adj_yield_rf))*0.90718474),ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("RF Out-of-Bag Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield log"(Mg ~ yr^{-1} ~ km^{-2})))
+plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ log(exp(predict(adj_yield_rf))*0.90718474),ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("RF Out-of-Bag Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$lmcvpred_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Cross Validation Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield log"(Mg ~ yr^{-1} ~ km^{-2})))
+plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$lmcvpred_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Cross Validation Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m~huc_sum_guage_dfc$lmcvpred_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Cross Validation Yield log"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In log units)")
+plot(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m~huc_sum_guage_dfc$lmcvpred_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Cross Validation Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In ln units)")
 lines(x2,y2, col = 'red')#1:1 line
 dev.off() ## finishes rendering high res figure
 
@@ -833,7 +836,7 @@ my_breaks <- c(50,100,150,200)
 gplt.SPvRF <- ggplot(data=hucs_w_covs.df, aes(rf.pltyield,sparrow.pltyield)) +
   stat_binhex(bins = 30) + geom_abline(intercept = 0, slope = 1,lwd=1)  + xlim(-5,7.5) + ylim(-5,7.5) + 
   theme(axis.text=element_text(size=12), legend.text=element_text(size=14), axis.title=element_text(size=14),plot.title = element_text(hjust = 0.5)) + 
-  xlab("RF log(yield)") + ylab("Sparrow log(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri))+ggtitle("Total Predicted Yields")
+  xlab("RF ln(yield)") + ylab("Sparrow ln(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri))+ggtitle("Total Predicted Yields")
 gplt.SPvRF
 setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
 #ggsave('SPvRF_m.tif', plot = gplt.SPvRF, device = "tiff", dpi = 600, limitsize = TRUE)
@@ -884,7 +887,7 @@ hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_log
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag75F_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 UCRBload.ec75_100F.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag75F_sim
-Ag75F.load.sim_metric <- UCRBload.ec75_100F.sim*0.90718474 # 501,212 Mg
+Ag75F.load.sim_metric <- UCRBload.ec75_100F.sim*0.90718474 # 501,212 Mg w/o diversions; 559,511 w? diversions 
 hucs_w_covs_ag_sim$agyld75F <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
 hucs_w_covs_ag_sim$agload75F <- hucs_w_covs_ag_sim$agyld75F * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld75F_perpix <- hucs_w_covs_ag_sim$agyld75F / ((hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
@@ -908,7 +911,7 @@ hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_log
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag0N_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 Ag0N.load.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag0N_sim
-Ag0N.load.sim_metric <- Ag0N.load.sim*0.90718474 # 189,292 Mg
+Ag0N.load.sim_metric <- Ag0N.load.sim*0.90718474 # 189,292 Mg w/o diversions; 173,350 Mg with diversions
 hucs_w_covs_ag_sim$agyld0N <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
 hucs_w_covs_ag_sim$agload0N <- hucs_w_covs_ag_sim$agyld0N * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld0N_perpix <- hucs_w_covs_ag_sim$agyld0N / hucs_w_covs_ag_sim$ec75_100F.sqkm
@@ -941,7 +944,7 @@ hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_log
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 Ag.load.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag_sim
-Ag.load.sim_metric <- Ag.load.sim*0.90718474 # 661,379 Mg
+Ag.load.sim_metric <- Ag.load.sim*0.90718474 # 661,379 Mg w/o diverions, 701,373 w/ diversions
 hucs_w_covs_ag_sim$agyld <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
 hucs_w_covs_ag_sim$agload <- hucs_w_covs_ag_sim$agyld * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld_perpix <- hucs_w_covs_ag_sim$agyld / ((hucs_w_covs_ag_sim$ec0_75N.sqkm+hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
@@ -967,15 +970,15 @@ lines(x1,y1, col = 'red')
 hucs_w_covs_ag_sim.df <- as.data.frame(hucs_w_covs_ag_sim)
 # Flood Ag
 hucs_w_covs_ag_sim.df$floodAg_RFyield.plt <- log((hucs_w_covs_ag_sim.df$agyld*0.90718474)+0.1)
-hucs_w_covs_ag_sim.df$Flood_Irrigated_Yield_tonnes_sqkm.plt <- log((hucs_w_covs_ag_sim.df$Flood_Irrigated_Yield_tons_sqkm*0.90718474)+0.1)
+hucs_w_covs_ag_sim.df$Irrigated_Yield_tonnes_sqkm.plt <- log((hucs_w_covs_ag_sim.df$Irrigated_Yield_tons_sqkm*0.90718474)+0.1)
 lim.yieldfa1 <- range(hucs_w_covs_ag_sim.df$floodAg_RFyield.plt, na.rm=TRUE)
-lim.yieldfa2 <- range(hucs_w_covs_ag_sim.df$Flood_Irrigated_Yield_tonnes_sqkm.plt, na.rm=TRUE)
+lim.yieldfa2 <- range(hucs_w_covs_ag_sim.df$Irrigated_Yield_tonnes_sqkm.plt, na.rm=TRUE)
 lim.yieldfa <-range(append(lim.yieldfa1,lim.yieldfa2),na.rm=T)
-gplt.SPvRF.fa <- ggplot(data=hucs_w_covs_ag_sim.df, aes(floodAg_RFyield.plt, Flood_Irrigated_Yield_tonnes_sqkm.plt)) +
+gplt.SPvRF.fa <- ggplot(data=hucs_w_covs_ag_sim.df, aes(floodAg_RFyield.plt, Irrigated_Yield_tonnes_sqkm.plt)) +
   stat_binhex(bins = 30) + geom_abline(intercept = 0, slope = 1,lwd=1)  + xlim(-5,7.5) + ylim(-5,7.5) + 
   theme(axis.text=element_text(size=12), legend.text=element_text(size=14), axis.title=element_text(size=14),plot.title = element_text(hjust = 0.5)) + 
-  xlab("RF log(yield)") + ylab("SPARROW log(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri)) +
-  ggtitle("Yields from Flooded Agriculture")
+  xlab("RF ln(yield)") + ylab("SPARROW ln(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri)) +
+  ggtitle("Yields from Irrigated Agriculture")
 gplt.SPvRF.fa
 # Geologic sources
 hucs_w_covs_ag_sim.df$adj_yield_rf_yield.plt <- log((hucs_w_covs_ag_sim.df$adj_yield_rf_yield*0.90718474)+0.1)
@@ -984,8 +987,8 @@ my_breaks <- c(100,200,300,400,500)
 gplt.SPvRF.geo <- ggplot(data=hucs_w_covs_ag_sim.df, aes(adj_yield_rf_yield.plt, Geologic_Yield_tonnes_sqkm.plt)) +
   stat_binhex(bins = 30) + geom_abline(intercept = 0, slope = 1,lwd=1)  + xlim(-5,7.5) + ylim(-5,7.5) + 
   theme(axis.text=element_text(size=12), legend.text=element_text(size=14), axis.title=element_text(size=14),plot.title = element_text(hjust = 0.5)) + 
-  xlab("RF log(yield)") + ylab("SPARROW log(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri), breaks = my_breaks, labels = my_breaks) +
-  ggtitle("Yields exluding Flooded Ag. Sources")
+  xlab("RF ln(yield)") + ylab("SPARROW ln(yield)") + scale_fill_gradientn(name = "Count", colours = rev(viri), breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Yields exluding Irrigated Ag. Sources")
 gplt.SPvRF.geo
 ##Trellis
 SPvRF.plots <- grid.arrange(gplt.SPvRF,gplt.SPvRF.fa,gplt.SPvRF.geo,ncol=3)
