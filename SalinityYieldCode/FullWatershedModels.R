@@ -590,7 +590,7 @@ huc_sum_guage_dfc <- merge(huc_sum_guage_df,guages_div, by="guageid")
 huc_sum_guage_dfc <- huc_sum_guage_dfc[!is.na(huc_sum_guage_dfc$div_adj_load_tonsyr),]
 huc_sum_guage_dfc$div_adj_load_tonsyrsqkm <- huc_sum_guage_dfc$div_adj_load_tonsyr / huc_sum_guage_dfc$sqkm
 
-#### Random Forest Predictions
+#### Random Forest Predictions with load as trainer
 varlist <- c("ec0_10.sqkm","ec10_25.sqkm","ec25_50.sqkm","ec50_75.sqkm","ec75_90.sqkm","ec90_100.sqkm","ec75_100F.sqkm","ec0_75F.sqkm","ec0_75N.sqkm","ec75_100N.sqkm","sprg.load","ec75q.pct","ec50q.pct","ec.ave","ec.75q","kw.ave","kw.75q","kw75q.pct","flen.ave","facc.ave","bgm75q.pct","bgm90q.pct","bgm75q30p.pct","ec75q_kw75q.pct","ec75q_facc75q.pct","ec75q_f500m.pct","ec75q_bgm75q30p.pct","ec75q_bgm75q.pct","ec75q_bgm75q_kw75q.pct","ec75q_bgm75q_facc75q.pct","ec75q_bgm75q_f500m.pct","ec90q_bgm90q40p_kw90q_facc90q_f500m.pct","ec75q_bgm75q30p_kw75q_facc75q_f500m.pct","ec75q_bgm75q_kw75q_facc75q_f500m.pct","ec50q_bgm75q30p_kw50q_facc50q_f1000m.pct","Brock.ave","sar.ave","rock.ave","fs.ave","awc.ave","elev.ave","ppt.ave","pptratio.ave","protind.ave","slp.ave","sness.ave","exc.ave","cwd.ave","mlt.ave","rch.ave")
 ### RF for load: Log or not?
 formulaStringRF_adj_load <- as.formula(paste('log(div_adj_load_tonsyr) ~', paste(varlist, collapse="+")))# put in dep variable name
@@ -623,7 +623,7 @@ hucs_w_covs$adj_yield_rf_logtest <- unname(predict(adj_yield_rfc, newdata=hucs_w
 hucs_w_covs$adj_yield_rf_yield_test <- exp(hucs_w_covs$adj_yield_rf_logtest)
 hucs_w_covs$adj_yield_rf_load_test <- hucs_w_covs$adj_yield_rf_yield_test*hucs_w_covs$sqkm
 UCRBload.yield_rf_test <- sum(hucs_w_covs$adj_yield_rf_load_test, na.rm=T) ## Total UCRB load test, 15 (out of 10879) NAs come up in edge reaches
-UCRBload.yield_rf_test # w/o diversions: 5.73,5.67, 5.68,5.60,5.59... Used:5.76; w diversions:  5.72, 5.73, 5.70, 5.75, 5.71
+UCRBload.yield_rf_test # w/o diversions: 5.73,5.67, 5.68,5.60,5.59... Used:5.76; w diversions:  5.72, 5.73, 5.70, 5.75, 5.71 
 
 # Prune list visuallly by importance
 varlist_yieldcc <- names(sort(Imppltc[,1], decreasing=T)[0:17]) # chose top variables visually
@@ -662,7 +662,7 @@ tiff("Model_VarImp_NASIS.tif",width = 6, height = 5, units = 'in', res = 600 )
 Impplt <- varImpPlot(adj_yield_rf)
 dev.off()
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=bgm90q.pct) ## Check pi plot for most influential variable(s)
-partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=fs.ave)
+partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=sar.ave)
 partialPlot(adj_yield_rf, pred.data = huc_sum_guage_dfc, x.var=ec0_75N.pct)
 
 ## Start plotting fin
@@ -730,8 +730,9 @@ lmcvm.log.RMSE_m <- sqrt(mean((log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.907
 lmcvm.log.Rsquared_m <- 1-var(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.90718474) - log(huc_sum_guage_dfc$lmcvpred.nonlog_m), na.rm=TRUE)/var(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.90718474), na.rm=TRUE)
 lmcvm.RMSE_m <- sqrt(mean(((huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.90718474) - huc_sum_guage_dfc$lmcvpred.nonlog_m)^2, na.rm=TRUE))
 lmcvm.Rsquared_m <- 1-var((huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.90718474) - huc_sum_guage_dfc$lmcvpred.nonlog_m, na.rm=TRUE)/var((huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm*0.90718474), na.rm=TRUE)
-# Add Fit and CV errors
+# Add Fit, OOB, and CV errors
 huc_sum_guage_dfc$adj_yield_rf_diff <- log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm) - huc_sum_guage_dfc$adj_yield_rf_yield_log
+huc_sum_guage_dfc$adj_yield_rf_oob_diff <- log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm) - predict(adj_yield_rf)
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff <- log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm) - huc_sum_guage_dfc$lmcvpred 
 ## Look at residuals and autocorrelation
 huc_sum_guage_dfc$adj_yield_rf_lm_resid <- residuals(adj_yield_rf_lm)
@@ -742,7 +743,7 @@ huc_sum_guage_dfc <- read.delim("/home/tnaum/data/BLM_Salinity/DSM_SPARROW/guage
 #save.image("~/data/BLM_Salinity/DSM_SPARROW/scripts/HUC_integration_streamguage_pourPts_DSM_SPARROW_oldKw_fullwatersheds_2013_NASIS_data_20190405.RData")
 ## Plots for paper: model fit and cross validation
 setwd("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/figures/metric")
-## Convert to metric
+## Convert residuals to metric
 huc_sum_guage_dfc$div_adj_load_tonsyrsqkm_m <- huc_sum_guage_dfc$div_adj_load_tonsyrsqkm * 0.90718474
 huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m <- huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm * 0.90718474
 huc_sum_guage_dfc$adj_yield_rf_logpre_m <- log(exp(huc_sum_guage_dfc$adj_yield_rf_logpre)*0.90718474)
@@ -753,6 +754,7 @@ huc_sum_guage_dfc$adj_yield_rf_lm_resid_nonlog <- exp(huc_sum_guage_dfc$adj_yiel
 huc_sum_guage_dfc$adj_yield_rf_lm_resid_nonlog_m <- huc_sum_guage_dfc$adj_yield_rf_lm_resid_nonlog * 0.90718474
 huc_sum_guage_dfc$adj_yield_rf_lm_resid_m_logunsigned <- log(huc_sum_guage_dfc$adj_yield_rf_lm_resid_nonlog_m)
 huc_sum_guage_dfc$adj_yield_rf_lm_resid_m <- huc_sum_guage_dfc$adj_yield_rf_lm_resid_m_logunsigned * huc_sum_guage_dfc$adj_yield_rf_lm_resid_sign
+# Cross validation
 huc_sum_guage_dfc$lmcvpred_m <- log(exp(huc_sum_guage_dfc$lmcvpred)*0.90718474)
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_sign <- ifelse(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff < 0, -1, 1)
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_unsigned <- abs(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff)
@@ -760,6 +762,13 @@ huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog <- exp(huc_sum_guage_dfc$adj_yi
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog_m <- huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog * 0.90718474
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m_logunsigned <- log(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_nonlog_m)
 huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m <- huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m_logunsigned * huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_sign
+# Out of bag (OOB) residuals to metric
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_sign <- ifelse(huc_sum_guage_dfc$adj_yield_rf_oob_diff < 0, -1, 1)
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_unsigned <- abs(huc_sum_guage_dfc$adj_yield_rf_oob_diff)
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_nonlog <- exp(huc_sum_guage_dfc$adj_yield_rf_oob_diff_unsigned)
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_nonlog_m <- huc_sum_guage_dfc$adj_yield_rf_oob_diff_nonlog * 0.90718474
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_m_logunsigned <- log(huc_sum_guage_dfc$adj_yield_rf_oob_diff_nonlog_m)
+huc_sum_guage_dfc$adj_yield_rf_oob_diff_m <- huc_sum_guage_dfc$adj_yield_rf_oob_diff_m_logunsigned * huc_sum_guage_dfc$adj_yield_rf_oob_diff_sign
 ## Set up high res figure
 tiff("FigX_Model_Performance_NASIS.tif",width = 8, height = 5, units = 'in', res = 600 ) 
 par(mfrow=c(2,3),mar=c(5,5,1,2),cex.lab = 1.0)
@@ -767,7 +776,7 @@ plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yiel
 lines(x1,y1, col = 'red')
 plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Corrected Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(huc_sum_guage_dfc$adj_yield_rf_lm_resid_m~huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Corrected Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In ln units)")
+plot(huc_sum_guage_dfc$adj_yield_rf_lm_resid_m~huc_sum_guage_dfc$adj_yield_rf_yield_log_m,ylim=c(-4,4),xlim=c(0.4,7.25), xlab=expression("Corrected Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Residuals ln"(Mg ~ yr^{-1} ~ km^{-2})))
 x2 <-c(0,100,10000,100000000)
 y2 <-c(0,0,0,0)
 lines(x2,y2, col = 'red')#1:1 line
@@ -775,7 +784,7 @@ plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ log(exp(predict(adj_yield_
 lines(x1,y1, col = 'red')
 plot(log(huc_sum_guage_dfc$adj_mean_ds_tonyrsqkm_m) ~ huc_sum_guage_dfc$lmcvpred_m,ylim=c(0.4,7.25),xlim=c(0.4,7.25),xlab=expression("Cross Validation Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Observed Yield ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x1,y1, col = 'red')
-plot(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m~huc_sum_guage_dfc$lmcvpred_m,ylim=c(-3,3),xlim=c(0.4,7.25), xlab=expression("Cross Validation Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab="Residuals (In ln units)")
+plot(huc_sum_guage_dfc$adj_yield_rf_cv_lm_diff_m~huc_sum_guage_dfc$lmcvpred_m,ylim=c(-4,4),xlim=c(0.4,7.25), xlab=expression("Cross Validation Yield ln"(Mg ~ yr^{-1} ~ km^{-2})),ylab=expression("Residuals ln"(Mg ~ yr^{-1} ~ km^{-2})))
 lines(x2,y2, col = 'red')#1:1 line
 dev.off() ## finishes rendering high res figure
 
@@ -783,11 +792,13 @@ dev.off() ## finishes rendering high res figure
 guage.pts <- readOGR("/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/SPARROW/HydroGDB/SIR20175009_UCRB_HydroNetwork.gdb/SIR20175009_UCRB_HydroNetwork.gdb", "guage_locations_rf_yield_model_alb")
 guage.pts <- merge(guage.pts,huc_sum_guage_dfc, by="guage", all = FALSE)
 # Write Residuals to a shapefile
-guage.pts.residuals <- guage.pts[,c("WATERID","guage","adj_yield_rf_lm_resid_m","adj_yield_rf_cv_lm_diff_m")]
-guage.pts.residuals$yldresid <- guage.pts.residuals$adj_yield_rf_lm_resid
+guage.pts.residuals <- guage.pts[,c("WATERID","guage","adj_yield_rf_lm_resid_m","adj_yield_rf_cv_lm_diff_m","adj_yield_rf_oob_diff_m")]
+guage.pts.residuals$oobresid <- guage.pts.residuals$adj_yield_rf_oob_diff_m 
+guage.pts.residuals$yldresid <- guage.pts.residuals$adj_yield_rf_lm_resid_m
 guage.pts.residuals$cvresid <- guage.pts.residuals$adj_yield_rf_cv_lm_diff_m
 guage.pts.residuals$adj_yield_rf_cv_lm_diff_m <- NULL
-guage.pts.residuals$adj_yield_rf_lm_resid <- NULL
+guage.pts.residuals$adj_yield_rf_lm_resid_m <- NULL
+guage.pts.residuals$adj_yield_rf_oob_diff_m <- NULL
 writeOGR(guage.pts.residuals, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="guage_rf_lm_yield_resid_2013_NASIS",overwrite_layer = T)
 sa.dw1<-dnearneigh(guage.pts, d1=0, d2=1100000)
 #sa.knn<-knearneigh(guage.pts, k = 10)
@@ -808,17 +819,19 @@ geary.test <- geary.test(guage.pts$adj_yield_rf_lm_resid_m, listw2U(sa.wtd), alt
 geary.test # C = 0.9082, expected = 1.0, p = 0.1563
 geary.test.cv <- geary.test(guage.pts$adj_yield_rf_cv_lm_diff_m, listw2U(sa.wtd), alternative="two.sided")
 geary.test.cv # C = 0.8980, expected = 1, p = 0.1634 for CV
+geary.test.oob <- geary.test(guage.pts$adj_yield_rf_oob_diff_m, listw2U(sa.wtd), alternative="two.sided")
+geary.test.oob # C = 0.8968, expected = 1, p = 0.1167 for OOB
 
 
 ## Huc predictions
-hucs_w_covs$rfyield <- hucs_w_covs$adj_yield_rf_yield * 1
-hucs_w_covs$rfload <- hucs_w_covs$adj_yield_rf_load * 1
+hucs_w_covs$rfyield <- hucs_w_covs$adj_yield_rf_yield * 0.90718474 # Convert to metric tons
+hucs_w_covs$rfload <- hucs_w_covs$adj_yield_rf_load * 0.90718474 # Convert to metric tons
 #hucs_yield_exp <- hucs_w_covs[,c("WATERID","rfyield","rfload","sqkm")]
 #writeOGR(hucs_yield_exp, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_yield_2013_NASIS")
 ## Compare Huc predictions to SPARROW
 hucs_w_covs$SPARROWyield <- hucs_w_covs$Geologic_Yield_tons_mi2 + hucs_w_covs$Irrigated_Yield_tons_mi2
-hucs_w_covs$sparrowyieldsqkm <- hucs_w_covs$SPARROWyield*0.386102
-hucs_w_covs$sprwyld <- hucs_w_covs$sparrowyieldsqkm
+hucs_w_covs$sparrowyieldsqkm <- hucs_w_covs$SPARROWyield*0.386102 # Change to per square km basis
+hucs_w_covs$sprwyld <- hucs_w_covs$sparrowyieldsqkm * 0.90718474 # convert to metric tons
 hucs_w_covs$diff <- hucs_w_covs$rfyield - hucs_w_covs$sparrowyieldsqkm 
 plot(log(hucs_w_covs$sparrowyieldsqkm+0.01) ~ log(hucs_w_covs$rfyield+0.01))
 lines(x1,y1, col = 'red')
@@ -826,13 +839,13 @@ cor.test(log(hucs_w_covs$sparrowyieldsqkm+0.01), log(hucs_w_covs$rfyield+0.01))
 plot(hucs_w_covs$sparrowyieldsqkm ~ hucs_w_covs$rfyield,xlim=c(0,1500))
 lines(x1,y1, col = 'red')
 hucs_yield_diff <- hucs_w_covs[,c("WATERID","rfyield","sprwyld","sqkm","diff")]
-writeOGR(hucs_yield_diff, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_sparrow_diff_yield_2013_NASIS",overwrite_layer = T)
+#writeOGR(hucs_yield_diff, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_sparrow_diff_yield_2013_NASIS",overwrite_layer = T)
 
 ## ggplot Hex bin plots
 viri <- c("#440154FF", "#39568CFF", "#1F968BFF", "#73D055FF", "#FDE725FF") # Color ramp
 # METRIC!!!
 hucs_w_covs$sparrow.pltyield <- log((hucs_w_covs$sparrowyieldsqkm*0.90718474)+0.1)
-hucs_w_covs$rf.pltyield <- log((hucs_w_covs$rfyield*0.90718474)+0.1)
+hucs_w_covs$rf.pltyield <- log((hucs_w_covs$rfyield)+0.1)
 hucs_w_covs.df <- as.data.frame(hucs_w_covs)
 my_breaks <- c(50,100,150,200)
 gplt.SPvRF <- ggplot(data=hucs_w_covs.df, aes(rf.pltyield,sparrow.pltyield)) +
@@ -854,7 +867,34 @@ summary(huc_sum_guage_dfc_dinf$awc.ave) # 0.1239  0.1557  0.1731  0.1712  0.1861
 summary(huc_sum_guage_dfc$awc.ave)      # 0.08528 0.15754 0.16950 0.16935 0.18107 0.20964
 summary(huc_sum_guage_dfc_dinf$sar.ave) # 0.0735  0.2069  0.2764  0.3093  0.3449  1.3404
 summary(huc_sum_guage_dfc$sar.ave)      # 0.0735  0.2037  0.2556  0.3184  0.3217  1.6237
-summary(huc_sum_guage_dfc$bgm90q.pct) # 0.0005037 0.0463390 0.0710340 0.0856348 0.1144926 0.3740216
+summary(huc_sum_guage_dfc_dinf$ec0_75N.pct) # 0.000000 0.000000 0.000000 0.003888 0.001198 0.057594
+summary(huc_sum_guage_dfc$ec0_75N.pct) # 0.0000000 0.0000000 0.0000000 0.0024446 0.0009706 0.0869759
+summary(huc_sum_guage_dfc_dinf$ec75_100F.pct) # 0.0000000 0.0000000 0.0000000 0.0030812 0.0003027 0.0923828 
+summary(huc_sum_guage_dfc$ec75_100F.pct) # 0.0000000 0.0000000 0.0000000 0.0032135 0.0000214 0.4800622
+summary(huc_sum_guage_dfc_dinf$ec75q.pct) # 0.00000 0.00000 0.00000 0.04998 0.02963 0.92529  
+summary(huc_sum_guage_dfc$ec75q.pct) # 0.000000 0.000000 0.000000 0.045392 0.005574 0.999095 
+summary(huc_sum_guage_dfc_dinf$ec25_50.pct) # 0.00000 0.09309 0.21322 0.29557 0.41873 0.98882  
+summary(huc_sum_guage_dfc$ec25_50.pct) # 0.00000 0.00404 0.11365 0.16883 0.24076 0.98882  
+summary(huc_sum_guage_dfc_dinf$slp.ave) # 134.0   768.6   971.2   964.9  1162.9  2010.2   
+summary(huc_sum_guage_dfc$slp.ave) # 134.0   926.7  1246.6  1283.6  1650.8  2618.0   
+summary(huc_sum_guage_dfc_dinf$bgm90q.pct) # 0.0005037 0.0166065 0.0313721 0.0292539 0.0435461 0.0491343 - diffferent b/c this is sim var   
+summary(huc_sum_guage_dfc$bgm90q.pct) # 0.0005037 0.0463390 0.0710340 0.0856348 0.1144926 0.3740216 
+summary(huc_sum_guage_dfc_dinf$rock.ave) # 0.7676  3.8265  5.3495  5.2279  6.2639 12.1136    
+summary(huc_sum_guage_dfc$rock.ave) # 0.7676  5.2840  7.1204  7.5505  9.7320 15.4938  
+summary(huc_sum_guage_dfc_dinf$protind.ave) # 115.5   701.3   898.7   878.1  1061.7  1868.4    
+summary(huc_sum_guage_dfc$protind.ave) # 115.5   843.6  1140.3  1187.0  1497.4  2508.5  
+summary(huc_sum_guage_dfc_dinf$kw.ave) # 0.1258  0.1601  0.1802  0.1853  0.2019  0.2731     
+summary(huc_sum_guage_dfc$kw.ave) # 0.1206  0.1497  0.1656  0.1719  0.1854  0.2731  
+summary(huc_sum_guage_dfc_dinf$ec0_10.pct) # 0.00000 0.02807 0.13187 0.20450 0.24512 0.92839      
+summary(huc_sum_guage_dfc$ec0_10.pct) # 0.0000  0.0835  0.2622  0.3666  0.6624  0.9973  
+summary(huc_sum_guage_dfc_dinf$ec.ave) # 0.2071  0.7310  1.0637  1.3515  1.4806  6.3014       
+summary(huc_sum_guage_dfc$ec.ave) # 0.2071  0.4914  0.7385  1.1936  1.2199 12.3718  
+summary(huc_sum_guage_dfc_dinf$kw.75q) # 0.1300  0.1808  0.2138  0.2133  0.2451  0.3069       
+summary(huc_sum_guage_dfc$kw.75q) # 0.1267  0.1648  0.1838  0.1955  0.2227  0.3069   
+summary(huc_sum_guage_dfc_dinf$ec10_25.pct) # 0.0000  0.1784  0.3553  0.3823  0.5695  0.9636       
+summary(huc_sum_guage_dfc$ec10_25.pct) # 0.0000  0.1457  0.3447  0.3638  0.5589  0.9838   
+summary(huc_sum_guage_dfc_dinf$sness.ave) # -7825.05  -982.13    19.99  -175.30   798.47  4901.60       
+summary(huc_sum_guage_dfc$sness.ave) # -7825.048  -822.824     6.627    38.561   956.145  6539.649   
 ## Choose goal of catchments only having 5% pixels in the bareground risk index 
 hucs_w_covs_dist_sim <- hucs_w_covs
 hucs_w_covs_dist_sim$bgm90q.pct2 <- hucs_w_covs_dist_sim$bgm90q.pct
@@ -862,17 +902,18 @@ hucs_w_covs_dist_sim$bgm90q.pct <- ifelse(hucs_w_covs_dist_sim$bgm90q.pct > 0.05
 hucs_w_covs_dist_sim$adj_yield_rf_logpre <- unname(predict(adj_yield_rf, newdata=hucs_w_covs_dist_sim))
 hucs_w_covs_dist_sim$adj_yield_rf_loglm <- predict(adj_yield_rf_lm, hucs_w_covs_dist_sim) #data.frame(pprobs = x1); data.frame(adj_yield_rf_log = hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs_dist_sim$adj_yield_rf_yield <- exp(hucs_w_covs_dist_sim$adj_yield_rf_loglm)
+hucs_w_covs_dist_sim$adj_yield_rf_yield_m <- hucs_w_covs_dist_sim$adj_yield_rf_yield * 0.90718474 # metric tons
 hucs_w_covs_dist_sim$adj_yield_rf_load <- hucs_w_covs_dist_sim$adj_yield_rf_yield*hucs_w_covs_dist_sim$sqkm
 UCRBload.yield_rf_lm_dist_sim <- sum(hucs_w_covs_dist_sim$adj_yield_rf_load, na.rm=T)
 UCRBload.yield_rf_lm_dist_sim_metric <- UCRBload.yield_rf_lm_dist_sim*0.90718474
 distload <- UCRBload.yield_rf_lm_metric - UCRBload.yield_rf_lm_dist_sim_metric
-hucs_w_covs_dist_sim$distyld <-  hucs_w_covs_dist_sim$rfyield - hucs_w_covs_dist_sim$adj_yield_rf_yield
+hucs_w_covs_dist_sim$distyld <-  hucs_w_covs_dist_sim$rfyield - hucs_w_covs_dist_sim$adj_yield_rf_yield_m
 hucs_w_covs_dist_sim$distload <- hucs_w_covs_dist_sim$distyld * hucs_w_covs_dist_sim$sqkm
-hucs_w_covs_dist_sim$distyld_perpix <- hucs_w_covs_dist_sim$distyld / (hucs_w_covs_dist_sim$bgm90q.pct2 * hucs_w_covs_dist_sim$sqkm/0.0009)########
+hucs_w_covs_dist_sim$distyld_perpix <- hucs_w_covs_dist_sim$distyld / (hucs_w_covs_dist_sim$bgm90q.pct2 * hucs_w_covs_dist_sim$sqkm/0.0009)
 hucs_w_covs_dist_sim$distload_perpix <- hucs_w_covs_dist_sim$distload / (hucs_w_covs_dist_sim$bgm90q.pct2 * hucs_w_covs_dist_sim$sqkm/0.0009)
 hucs_w_covs_dist_sim_chnged <- subset(hucs_w_covs_dist_sim, hucs_w_covs_dist_sim$bgm90q.pct2 > 0.05)
-mean(hucs_w_covs_dist_sim_chnged$distload_perpix, na.rm=T) # 0.0014 average mtons load saved by 'fixing' one identified disturbance pixel)
-summary(hucs_w_covs_dist_sim_chnged$distload_perpix, na.rm=T) # -0.1936182 -0.0033892 -0.0010771  0.0014100  0.0003448  0.6257293
+mean(hucs_w_covs_dist_sim_chnged$distload_perpix, na.rm=T) # 0.00128 average mtons load saved by 'fixing' one identified disturbance pixel)
+summary(hucs_w_covs_dist_sim_chnged$distload_perpix, na.rm=T) # -0.1756475 -0.0030747 -0.0009771  0.0012791  0.0003128  0.5676520
 hucs_yield_distsim <- hucs_w_covs_dist_sim[,c("WATERID","rfyield","rfload","sqkm","distyld")]
 #writeOGR(hucs_yield_distsim, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_dist_yield_2013_NASIS", overwrite_layer = T)
 
@@ -886,17 +927,18 @@ hucs_w_covs_ag_sim$ec75_100F.pct <- hucs_w_covs_ag_sim$ec75_100F.pct * 0
 hucs_w_covs_ag_sim$adj_yield_rf_logpre <- unname(predict(adj_yield_rf, newdata=hucs_w_covs_ag_sim))
 hucs_w_covs_ag_sim$adj_yield_rf_loglm <- predict(adj_yield_rf_lm, hucs_w_covs_ag_sim) #data.frame(pprobs = x1); data.frame(adj_yield_rf_log = hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_loglm)
+hucs_w_covs_ag_sim$adj_yield_rf_yield_m <- hucs_w_covs_ag_sim$adj_yield_rf_yield * 0.90718474 # metric tons
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag75F_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 UCRBload.ec75_100F.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag75F_sim
 Ag75F.load.sim_metric <- UCRBload.ec75_100F.sim*0.90718474 # 501,212 Mg w/o diversions; 559,511 w? diversions 
-hucs_w_covs_ag_sim$agyld75F <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
+hucs_w_covs_ag_sim$agyld75F <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield_m
 hucs_w_covs_ag_sim$agload75F <- hucs_w_covs_ag_sim$agyld75F * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld75F_perpix <- hucs_w_covs_ag_sim$agyld75F / ((hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
 hucs_w_covs_ag_sim$agload75F_perpix <- hucs_w_covs_ag_sim$agload75F / ((hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
-hucs_w_covs_ag_sim_chnged <- subset(hucs_w_covs_ag_sim, hucs_w_covs_ag_sim$ec75_100F.sqkm > 0.00001) # 849 hucs
-mean(hucs_w_covs_ag_sim_chnged$agload75F_perpix, na.rm=T) # 1.088 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
-summary(hucs_w_covs_ag_sim_chnged$agload75F_perpix, na.rm=T) # -8.3457  0.3438  0.7074  1.0883  1.3495 31.753
+hucs_w_covs_ag_sim_chnged <- subset(hucs_w_covs_ag_sim, hucs_w_covs_ag_sim$ec75_100F.sqkm > 0) # 849 hucs
+mean(hucs_w_covs_ag_sim_chnged$agload75F_perpix, na.rm=T) # 0.9873297 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
+summary(hucs_w_covs_ag_sim_chnged$agload75F_perpix, na.rm=T) # -7.5711  0.3119  0.6418  0.9873  1.2243 28.8061
 hucs_yield_agsim <- hucs_w_covs_ag_sim[,c("WATERID","rfyield","rfload","sqkm","agyld75F")]
 
 
@@ -910,17 +952,18 @@ hucs_w_covs_ag_sim$ec0_75N.pct <- hucs_w_covs_ag_sim$ec0_75N.pct * 0
 hucs_w_covs_ag_sim$adj_yield_rf_logpre <- unname(predict(adj_yield_rf, newdata=hucs_w_covs_ag_sim))
 hucs_w_covs_ag_sim$adj_yield_rf_loglm <- predict(adj_yield_rf_lm, hucs_w_covs_ag_sim) #data.frame(pprobs = x1); data.frame(adj_yield_rf_log = hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_loglm)
+hucs_w_covs_ag_sim$adj_yield_rf_yield_m <- hucs_w_covs_ag_sim$adj_yield_rf_yield * 0.90718474 # metric tons
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag0N_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 Ag0N.load.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag0N_sim
 Ag0N.load.sim_metric <- Ag0N.load.sim*0.90718474 # 189,292 Mg w/o diversions; 173,350 Mg with diversions
-hucs_w_covs_ag_sim$agyld0N <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
+hucs_w_covs_ag_sim$agyld0N <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield_m
 hucs_w_covs_ag_sim$agload0N <- hucs_w_covs_ag_sim$agyld0N * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld0N_perpix <- hucs_w_covs_ag_sim$agyld0N / hucs_w_covs_ag_sim$ec75_100F.sqkm
 hucs_w_covs_ag_sim$agload0N_perpix <- hucs_w_covs_ag_sim$agload0N / ((hucs_w_covs_ag_sim$ec0_75N.sqkm)/0.0009)
-hucs_w_covs_ag_sim_chnged <- subset(hucs_w_covs_ag_sim, hucs_w_covs_ag_sim$ec0_75N.sqkm > 0.00001) # 709 catchments
-mean(hucs_w_covs_ag_sim_chnged$agload0N_perpix, na.rm=T) # 0.415 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
-summary(hucs_w_covs_ag_sim_chnged$agload0N_perpix, na.rm=T) # -5.77927  0.03371  0.17772  0.41465  0.43200 14.06816
+hucs_w_covs_ag_sim_chnged <- subset(hucs_w_covs_ag_sim, hucs_w_covs_ag_sim$ec0_75N.sqkm > 0) # 709 catchments
+mean(hucs_w_covs_ag_sim_chnged$agload0N_perpix, na.rm=T) # 0.3761617 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
+summary(hucs_w_covs_ag_sim_chnged$agload0N_perpix, na.rm=T) # -5.24287  0.03058  0.16122  0.37616  0.39190 12.76242
 hucs_w_covs_ag_sim <- hucs_w_covs_ag_sim[,c("WATERID","agyld0N")]
 hucs_yield_agsim <- merge(hucs_yield_agsim,hucs_w_covs_ag_sim,by="WATERID")
 
@@ -931,11 +974,41 @@ summary(huc_sum_guage_dfc_noagvars$awc.ave) # 0.08528 0.16399 0.17505 0.17325 0.
 summary(huc_sum_guage_dfc$awc.ave) # 0.08528 0.15754 0.16950 0.16935 0.18107 0.20964
 huc_sum_guage_dfc_noag <- subset(huc_sum_guage_dfc, huc_sum_guage_dfc$ec0_75N.pct == 0 & huc_sum_guage_dfc$ec75_100F.pct == 0
                                  & huc_sum_guage_dfc$ec0_75F.pct == 0 & huc_sum_guage_dfc$ec75_100N.pct == 0) # 132 catchments
-summary(huc_sum_guage_dfc_noag$awc.ave) # 0.08528 0.15899 0.16915 0.16934 0.18034 0.20964
-summary(huc_sum_guage_dfc_noag$ec.ave) #0.2977  0.4040  0.5587  0.6772  0.7125  6.3014 
-summary(huc_sum_guage_dfc$ec.ave) # 0.2071  0.4914  0.7385  1.1936  1.2199 12.3718 
-summary(huc_sum_guage_dfc_noag$sar.ave) # 0.0735  0.1870  0.2336  0.2479  0.2862  1.3404  
-summary(huc_sum_guage_dfc$sar.ave) # 0.0735  0.2037  0.2556  0.3184  0.3217  1.6237 
+## Systematic simulation covariate inference analysis: no ag versus entire dataset
+summary(huc_sum_guage_dfc_noag$fs.ave) # 7.503  10.992  11.722  12.192  12.510  41.722
+summary(huc_sum_guage_dfc$fs.ave)      # 7.503  11.115  11.903  12.833  13.617  41.722 
+summary(huc_sum_guage_dfc_noag$awc.ave) # 0.08528 0.15899 0.16915 0.16934 0.18034 0.20964 
+summary(huc_sum_guage_dfc$awc.ave)      # 0.08528 0.15754 0.16950 0.16935 0.18107 0.20964
+summary(huc_sum_guage_dfc_noag$sar.ave) # 0.0735  0.1870  0.2336  0.2479  0.2862  1.3404 
+summary(huc_sum_guage_dfc$sar.ave)      # 0.0735  0.2037  0.2556  0.3184  0.3217  1.6237
+summary(huc_sum_guage_dfc_noag$ec0_75N.pct) # 0       0       0       0       0       0  - simulated variable
+summary(huc_sum_guage_dfc$ec0_75N.pct) # 0.0000000 0.0000000 0.0000000 0.0024446 0.0009706 0.0869759
+summary(huc_sum_guage_dfc_noag$ec75_100F.pct) # 0       0       0       0       0       0 - simulated variable
+summary(huc_sum_guage_dfc$ec75_100F.pct) # 0.0000000 0.0000000 0.0000000 0.0032135 0.0000214 0.4800622
+summary(huc_sum_guage_dfc_noag$ec75q.pct) # 0.000000 0.000000 0.000000 0.007539 0.000000 0.776021   
+summary(huc_sum_guage_dfc$ec75q.pct)      # 0.000000 0.000000 0.000000 0.045392 0.005574 0.999095 
+summary(huc_sum_guage_dfc_noag$ec25_50.pct) # 0.0000000 0.0000141 0.0042776 0.1144929 0.0777370 0.9888217  
+summary(huc_sum_guage_dfc$ec25_50.pct)      # 0.00000 0.00404 0.11365 0.16883 0.24076 0.98882  
+summary(huc_sum_guage_dfc_noag$slp.ave) # 262    1079    1567    1513    1895    2618    
+summary(huc_sum_guage_dfc$slp.ave) # 134.0   926.7  1246.6  1283.6  1650.8  2618.0   
+summary(huc_sum_guage_dfc_noag$bgm90q.pct) # 0.0005037 0.0563538 0.1002589 0.1093494 0.1486350 0.3740216   
+summary(huc_sum_guage_dfc$bgm90q.pct) # 0.0005037 0.0463390 0.0710340 0.0856348 0.1144926 0.3740216 
+summary(huc_sum_guage_dfc_noag$rock.ave) # 1.384   7.103   9.645   9.458  11.924  15.494    
+summary(huc_sum_guage_dfc$rock.ave) # 0.7676  5.2840  7.1204  7.5505  9.7320 15.4938  
+summary(huc_sum_guage_dfc_noag$protind.ave) # 266.0   979.1  1441.1  1400.4  1718.5  2508.5    
+summary(huc_sum_guage_dfc$protind.ave) # 115.5   843.6  1140.3  1187.0  1497.4  2508.5  
+summary(huc_sum_guage_dfc_noag$kw.ave) # 0.1206  0.1393  0.1500  0.1553  0.1656  0.2677     
+summary(huc_sum_guage_dfc$kw.ave) # 0.1206  0.1497  0.1656  0.1719  0.1854  0.2731  
+summary(huc_sum_guage_dfc_noag$ec0_10.pct) # 0.0000  0.1667  0.4842  0.5056  0.8739  0.9973      
+summary(huc_sum_guage_dfc$ec0_10.pct) # 0.0000  0.0835  0.2622  0.3666  0.6624  0.9973  
+summary(huc_sum_guage_dfc_noag$ec.ave) # 0.2977  0.4040  0.5587  0.6772  0.7125  6.3014       
+summary(huc_sum_guage_dfc$ec.ave) # 0.2071  0.4914  0.7385  1.1936  1.2199 12.3718  
+summary(huc_sum_guage_dfc_noag$kw.75q) # 0.1267  0.1557  0.1647  0.1719  0.1823  0.2766       
+summary(huc_sum_guage_dfc$kw.75q) # 0.1267  0.1648  0.1838  0.1955  0.2227  0.3069   
+summary(huc_sum_guage_dfc_noag$ec10_25.pct) # 0.0000  0.0938  0.2673  0.3612  0.6299  0.9838       
+summary(huc_sum_guage_dfc$ec10_25.pct) # 0.0000  0.1457  0.3447  0.3638  0.5589  0.9838   
+summary(huc_sum_guage_dfc_noag$sness.ave) # -7825.05  -895.12    34.52    29.93  1263.52  5402.07      
+summary(huc_sum_guage_dfc$sness.ave) # -7825.048  -822.824     6.627    38.561   956.145  6539.649  
 # Calculations
 hucs_w_covs_ag_sim <- hucs_w_covs
 hucs_w_covs_ag_sim$ec0_75N.pct <- hucs_w_covs_ag_sim$ec0_75N.pct * 0
@@ -943,24 +1016,26 @@ hucs_w_covs_ag_sim$ec75_100F.pct <- hucs_w_covs_ag_sim$ec75_100F.pct * 0
 hucs_w_covs_ag_sim$adj_yield_rf_logpre <- unname(predict(adj_yield_rf, newdata=hucs_w_covs_ag_sim))
 hucs_w_covs_ag_sim$adj_yield_rf_loglm <- predict(adj_yield_rf_lm, hucs_w_covs_ag_sim) #data.frame(pprobs = x1); data.frame(adj_yield_rf_log = hucs_w_covs$adj_yield_rf_log)
 hucs_w_covs_ag_sim$adj_yield_rf_yield <- exp(hucs_w_covs_ag_sim$adj_yield_rf_loglm)
+hucs_w_covs_ag_sim$adj_yield_rf_yield_m <- hucs_w_covs_ag_sim$adj_yield_rf_yield * 0.90718474
 hucs_w_covs_ag_sim$adj_yield_rf_load <- hucs_w_covs_ag_sim$adj_yield_rf_yield*hucs_w_covs_ag_sim$sqkm
 UCRBload.yield_rf_lm_ag_sim <- sum(hucs_w_covs_ag_sim$adj_yield_rf_load, na.rm=T)
 Ag.load.sim <- UCRBload.yield_rf_lm - UCRBload.yield_rf_lm_ag_sim
 Ag.load.sim_metric <- Ag.load.sim*0.90718474 # 661,379 Mg w/o diverions, 701,373 w/ diversions
-hucs_w_covs_ag_sim$agyld <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield
+hucs_w_covs_ag_sim$agyld <-  hucs_w_covs_ag_sim$rfyield - hucs_w_covs_ag_sim$adj_yield_rf_yield_m
 hucs_w_covs_ag_sim$agload <- hucs_w_covs_ag_sim$agyld * hucs_w_covs_ag_sim$sqkm
 hucs_w_covs_ag_sim$agyld_perpix <- hucs_w_covs_ag_sim$agyld / ((hucs_w_covs_ag_sim$ec0_75N.sqkm+hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
 hucs_w_covs_ag_sim$agload_perpix <- hucs_w_covs_ag_sim$agload / ((hucs_w_covs_ag_sim$ec0_75N.sqkm+hucs_w_covs_ag_sim$ec75_100F.sqkm)/0.0009)
 hucs_w_covs_ag_sim_chnged <- subset(hucs_w_covs_ag_sim, hucs_w_covs_ag_sim$ec0_75N.sqkm > 0 | hucs_w_covs_ag_sim$ec75_100F.sqkm > 0) # 1337 catchments
-mean(hucs_w_covs_ag_sim_chnged$agload_perpix) # 0.5957 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
-summary(hucs_w_covs_ag_sim_chnged$agload_perpix) # -7.2210  0.1260  0.4078  0.5957  0.8274  8.8500
+mean(hucs_w_covs_ag_sim_chnged$agload_perpix) # 0.5403648 Mg/pixel average load saved by removing one flooded saline agricultural pixel 
+summary(hucs_w_covs_ag_sim_chnged$agload_perpix) # -6.5507  0.1143  0.3699  0.5404  0.7506  8.0286
 hucs_w_covs_ag_sim2 <- hucs_w_covs_ag_sim[,c("WATERID","agyld")]
 hucs_yield_agsim <- merge(hucs_yield_agsim,hucs_w_covs_ag_sim2,by="WATERID")
-#writeOGR(hucs_yield_agsim, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_ag_yield_2013_NASIS",overwrite_layer = T)
+writeOGR(hucs_yield_agsim, dsn="/home/tnaum/Dropbox/USGS/BLM_projects/Utah_BLM_Salinity/DSM_SPARROW_manuscript/data/huc_predictions",driver="ESRI Shapefile", layer="hucs_rflm_ag_yield_2013_NASIS",overwrite_layer = T)
 # SPARROW Flood Irrigated Ag
 hucs_w_covs_ag_sim$Irrigated_Yield_tons_sqkm <- hucs_w_covs_ag_sim$Irrigated_Yield_tons_mi2 * 0.386102
+hucs_w_covs_ag_sim$Irrigated_Yield_tons_sqkm_m <- hucs_w_covs_ag_sim$Irrigated_Yield_tons_sqkm * 0.90718474
 # Plot flooded ag yields from Sparrow and the RF
-plot(log(hucs_w_covs_ag_sim$Irrigated_Yield_tons_sqkm+0.1)~log(hucs_w_covs_ag_sim$agyld+0.1)) # compare flooded ag yields
+plot(log(hucs_w_covs_ag_sim$Irrigated_Yield_tons_sqkm_m+0.1)~log(hucs_w_covs_ag_sim$agyld+0.1)) # compare ag yields
 lines(x1,y1, col = 'red')
 
 # Plot Geo Yield versus the non ag yields produced by this simulation
