@@ -10,4 +10,4 @@ The Beta release for peer review is available at https://doi.org/10.5281/zenodo.
 
 Nauman, T.W., 2019, Salinity yield modeling spatial data for the Upper Colorado River Basin, USA: U.S. Geological Survey data release, https://doi.org/10.5066/P9QSFDJN (pending)
 
-The predictive soil maps used for creating many of the model inputs are documented at https://github.com/usgs/Predictive-Soil-Mapping/tree/master/SoilSurvReconstrProperties. There are links to all the original soil maps are provided in that repository.
+The predictive soil maps used for creating many of the model inputs are documented at https://github.com/usgs/Predictive-Soil-Mapping/tree/master/SoilSurvReconstrProperties. Links to all the original soil maps are provided in that repository.
