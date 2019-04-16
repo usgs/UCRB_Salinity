@@ -5,7 +5,7 @@
 ### 3) Adjust streamgauge loads by diversions
 ### 4) Correlate the raster summaries to stream gauge metrics
 ### 5) Create salinity yield and load random forests
-### 6) Compute and graph results for manuscript
+### 6) Compute and graph results for manuscript figures
 ##
 ###################################################################
 
